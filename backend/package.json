@@ -1,0 +1,26 @@
+{
+  "name": "tml-villa-backend",
+  "version": "1.0.0",
+  "description": "TML Villa backend API",
+  "main": "api/db.js",
+  "scripts": {
+    "start": "node api/db.js",
+    "dev": "nodemon api/db.js",
+    "db:generate": "npx prisma generate",
+    "db:deploy": "npx prisma migrate deploy",
+    "db:studio": "npx prisma studio",
+    "postinstall": "npx prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "prisma": "^5.22.0",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}

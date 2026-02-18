@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 43 45% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 20% 96%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 40 20% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 40 20% 96%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 40 10% 90%;
+    --input: 40 10% 90%;
+    --ring: 43 45% 59%;
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html { scroll-behavior: smooth; }
+  body { @apply bg-white text-ink font-sans antialiased; }
+  h1, h2, h3 { @apply font-serif; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-champagne text-white font-medium text-sm rounded-lg transition-all duration-200;
+  }
+  .btn-primary:hover { @apply bg-champagne-dark; box-shadow: 0 4px 12px rgba(201, 169, 98, 0.3); }
+  
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-transparent border border-champagne text-champagne font-medium text-sm rounded-lg transition-all duration-200;
+  }
+  .btn-outline:hover { @apply bg-champagne text-white; }
+
+  .card-luxury {
+    @apply bg-white rounded-xl overflow-hidden transition-all duration-300 cursor-pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .card-luxury:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+  .container-luxury { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+
+  .search-bar {
+    @apply flex items-center bg-white rounded-full border border-gray-200 shadow-search;
+  }
+  .search-bar:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+
+  .category-pill {
+    @apply flex flex-col items-center gap-2 px-4 py-3 cursor-pointer transition-all duration-200 border-b-2 border-transparent;
+  }
+  .category-pill:hover { @apply text-champagne; }
+  .category-pill.active { @apply text-champagne border-champagne; }
+
+  .heart-btn {
+    @apply absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center transition-all duration-200;
+  }
+  .heart-btn:hover { @apply bg-white; transform: scale(1.1); }
+}
+
+@layer utilities {
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}

@@ -1,0 +1,77 @@
+import { Bell, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+
+interface HeaderProps { collapsed: boolean; currentPath: string; onLogout?: () => void; }
+
+const breadcrumbMap: Record<string, string> = {
+  dashboard: '仪表板', users: '用户管理', 'orders/homestay': '订单管理 / 民宿订单', 'orders/car': '订单管理 / 租车订单',
+  'orders/ticket': '订单管理 / 票务订单', 'orders/dining': '订单管理 / 餐饮订单', 'merchants/homestay': '商家管理 / 民宿管理',
+  'merchants/car': '商家管理 / 租车管理', 'merchants/ticket': '商家管理 / 票务管理', 'merchants/dining': '商家管理 / 餐饮管理',
+  'finance/overview': '财务管理 / 收入统计', 'finance/withdrawal': '财务管理 / 提现管理', 'finance/transactions': '财务管理 / 交易记录', settings: '系统设置',
+};
+
+export default function Header({ collapsed, currentPath, onLogout }: HeaderProps) {
+  const breadcrumb = breadcrumbMap[currentPath] || '仪表板';
+
+  return (
+    <header className={`fixed top-0 right-0 h-16 bg-white border-b border-gray-200 z-30 transition-all duration-300 ${collapsed ? 'left-16' : 'left-64'}`}>
+      <div className="h-full flex items-center justify-between px-6">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-400">首页</span><span className="text-gray-300">/</span><span className="text-gray-700">{breadcrumb}</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center relative">
+            <Search className="absolute left-3 text-gray-400" size={16} />
+            <Input placeholder="搜索..." className="pl-9 w-64 h-9 bg-gray-50 border-gray-200" />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell size={20} className="text-gray-600" />
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-[10px]">3</Badge>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel>通知</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="max-h-64 overflow-y-auto">
+                <DropdownMenuItem className="flex flex-col items-start py-3 cursor-pointer">
+                  <span className="text-sm font-medium">新订单提醒</span>
+                  <span className="text-xs text-gray-500">收到一个新的民宿订单</span>
+                  <span className="text-xs text-gray-400 mt-1">5分钟前</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex flex-col items-start py-3 cursor-pointer">
+                  <span className="text-sm font-medium">提现申请</span>
+                  <span className="text-xs text-gray-500">商家申请提现 ฿10,000</span>
+                  <span className="text-xs text-gray-400 mt-1">1小时前</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2">
+                <Avatar className="h-8 w-8"><AvatarFallback className="bg-champagne text-white text-sm">A</AvatarFallback></Avatar>
+                <span className="hidden sm:inline text-sm text-gray-700">管理员</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>我的账号</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled>个人资料</DropdownMenuItem>
+              <DropdownMenuItem disabled>修改密码</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={onLogout}>
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
+  );
+}

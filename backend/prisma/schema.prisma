@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  phone        String?
+  password     String
+  role         String   @default("USER")
+  status       String   @default("active")
+  avatar       String?
+  isHost       Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("create_time")
+  updatedAt    DateTime @updatedAt
+  orders       Order[]
+  
+  @@map("users")
+}
+
+model Homestay {
+  id          String   @id @default(cuid())
+  title       String
+  location    String
+  price       Int
+  rating      Float    @default(4.5)
+  reviews     Int      @default(0)
+  images      String[]
+  type        String
+  guests      Int
+  bedrooms    Int
+  beds        Int
+  bathrooms   Int
+  amenities   String[]
+  description String?
+  isFavorite  Boolean  @default(false)
+  hostName    String
+  hostAvatar  String
+  isSuperhost Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+  stocks      HouseStock[]
+  
+  @@map("homestays")
+}
+
+model HouseStock {
+  id        String   @id @default(cuid())
+  houseId   String   @map("house_id")
+  date      DateTime @db.Date
+  stockCount Int     @map("stock_count")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  house     Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  
+  @@unique([houseId, date])
+  @@map("house_stocks")
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  orderId     String   @unique @map("order_id")
+  userId      String   @map("user_id")
+  houseId     String   @map("house_id")
+  type        String   @default("homestay")
+  itemName    String   @map("item_name")
+  totalPrice  Int      @map("total_price")
+  status      String   @default("pending")
+  checkIn     DateTime? @map("check_in")
+  checkOut    DateTime? @map("check_out")
+  guests      Int?
+  createdAt   DateTime @default(now()) @map("create_time")
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+  house       Homestay @relation(fields: [houseId], references: [id])
+  
+  @@map("orders")
+}
+
+// 餐饮配置（后台可配置菜单）
+model MealConfig {
+  id          String   @id @default(cuid())
+  name        String   // 套餐名称，如"泰式早餐套餐"
+  description String?  // 套餐描述
+  image       String   // 套餐图片URL
+  price       Int      // 套餐价格（泰铢/人）
+  mealType    String   @map("meal_type") // BREAKFAST 或 DINNER
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("create_time")
+  updatedAt   DateTime @updatedAt
+  
+  orders      MealOrder[]
+  
+  @@map("meal_configs")
+}
+
+model MealOrder {
+  id            String   @id @default(cuid())
+  roomNumber    String   @map("room_number") // 房号，替代订单号
+  mealConfigId  String   @map("meal_config_id") // 选择的套餐ID
+  mealType      String   @map("meal_type") // BREAKFAST 或 DINNER
+  peopleCount   Int      @map("people_count")
+  totalPrice    Int      @map("total_price") // 总价
+  remark        String?
+  status        String   @default("CONFIRMED")
+  createdAt     DateTime @default(now()) @map("create_time")
+  updatedAt     DateTime @updatedAt
+  
+  mealConfig    MealConfig @relation(fields: [mealConfigId], references: [id])
+  
+  @@map("meal_orders")
+}
+
+// 车辆配置（后台可配置）
+model CarConfig {
+  id          String   @id @default(cuid())
+  name        String   // 车辆名称，如"丰田凯美瑞"
+  description String?  // 车辆描述
+  image       String   // 车辆图片URL
+  price       Int      // 租赁价格（泰铢/天）
+  carType     String   @map("car_type") // 车型：SUV、轿车、电动车等
+  seats       Int      // 座位数
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("create_time")
+  updatedAt   DateTime @updatedAt
+  
+  rentals     CarRental[]
+  
+  @@map("car_configs")
+}
+
+model CarRental {
+  id            String   @id @default(cuid())
+  roomNumber    String   @map("room_number") // 房号
+  carConfigId   String   @map("car_config_id") // 选择的车辆ID
+  startTime     DateTime @map("start_time")
+  endTime       DateTime @map("end_time")
+  days          Int      // 租赁天数
+  totalPrice    Int      @map("total_price") // 总价
+  remark        String?
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now()) @map("create_time")
+  updatedAt     DateTime @updatedAt
+  
+  carConfig     CarConfig @relation(fields: [carConfigId], references: [id])
+  
+  @@map("car_rentals")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  labelZh   String   @map("label_zh")
+  labelEn   String   @map("label_en")
+  labelTh   String   @map("label_th")
+  icon      String
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("categories")
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String
+  amount      Int
+  description String
+  createdAt   DateTime @default(now()) @map("create_time")
+  updatedAt   DateTime @updatedAt
+  
+  @@map("transactions")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now()) @map("create_time")
+  updatedAt DateTime @updatedAt
+  
+  @@map("admins")
+}
+
+// 票务配置（后台可配置）
+model TicketConfig {
+  id          String   @id @default(cuid())
+  name        String   // 票务名称，如"大皇宫门票"
+  description String?  // 票务描述
+  image       String   // 票务图片URL
+  price       Int      // 票务价格（泰铢/张）
+  ticketType  String   @map("ticket_type") // 类型：景点、表演、游艇等
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("create_time")
+  updatedAt   DateTime @updatedAt
+  
+  orders      TicketOrder[]
+  
+  @@map("ticket_configs")
+}
+
+model TicketOrder {
+  id            String   @id @default(cuid())
+  roomNumber    String   @map("room_number") // 房号
+  ticketConfigId String  @map("ticket_config_id") // 选择的票务ID
+  quantity      Int      // 预订数量
+  totalPrice    Int      @map("total_price") // 总价
+  visitDate     DateTime? @map("visit_date") // 参观日期（可选）
+  remark        String?
+  status        String   @default("CONFIRMED")
+  createdAt     DateTime @default(now()) @map("create_time")
+  updatedAt     DateTime @updatedAt
+  
+  ticketConfig  TicketConfig @relation(fields: [ticketConfigId], references: [id])
+  
+  @@map("ticket_orders")
+}
