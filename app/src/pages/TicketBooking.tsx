@@ -135,14 +135,22 @@ export default function TicketBookingPage() {
         </Button>
 
         <Card className="border-champagne/20 shadow-card">
-          <CardHeader className="bg-champagne/5 border-b border-champagne/10">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-champagne rounded-lg">
-                <Ticket className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-serif text-ink">票务预订</CardTitle>
-                <CardDescription className="text-warm-gray">预订景点、表演、游艇等票务</CardDescription>
+          <CardHeader className="relative h-[200px] overflow-hidden p-0">
+            <img 
+              src="https://images.unsplash.com/photo-1553603227-2358aabe821e?w=1200&auto=format&fit=crop" 
+              alt="Ticket Booking" 
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+            <div className="relative z-10 p-6 flex items-end h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-champagne rounded-xl backdrop-blur-sm shadow-lg">
+                  <Ticket className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-serif font-medium text-white">票务预订</CardTitle>
+                  <CardDescription className="text-white/80">预订景点、表演、游艇等票务</CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>

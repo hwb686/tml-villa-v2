@@ -149,14 +149,22 @@ export default function CarRentalPage() {
         </Button>
 
         <Card className="border-champagne/20 shadow-card">
-          <CardHeader className="bg-champagne/5 border-b border-champagne/10">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-champagne rounded-xl shadow-md">
-                <Car className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl font-serif text-ink">租车登记</CardTitle>
-                <CardDescription className="text-warm-gray">选择您需要的车辆</CardDescription>
+          <CardHeader className="relative h-[200px] overflow-hidden p-0">
+            <img 
+              src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&auto=format&fit=crop" 
+              alt="Car Rental" 
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+            <div className="relative z-10 p-6 flex items-end h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-champagne rounded-xl backdrop-blur-sm shadow-lg">
+                  <Car className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-serif font-medium text-white">租车登记</CardTitle>
+                  <CardDescription className="text-white/80">选择您需要的车辆</CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>
