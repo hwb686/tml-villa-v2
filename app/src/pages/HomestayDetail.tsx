@@ -380,7 +380,7 @@ export default function HomestayDetail() {
                     return unavailableDates.includes(dateString);
                   }}
                   className="rounded-md border w-full"
-                  captionLayout="dropdown-buttons"
+                  captionLayout="dropdown"
                   formatters={{
                     formatMonthDropdown: (date) => {
                       const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
