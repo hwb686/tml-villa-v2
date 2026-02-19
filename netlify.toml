@@ -1,16 +1,1 @@
-[build]
-command = "cd app && npm install && npm run build"
-publish = "app/dist"
-
-[build.environment]
-NODE_VERSION = "20"
-
-[[redirects]]
-from = "/api/*"
-to = "https://tml-villa-api-d279.onrender.com/api/:splat"
-status = 200
-
-[[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
+[build] command = "cd app && npm install && npx vite build" publish = "app/dist" [build.environment] NODE_VERSION = "20" [[redirects]] from = "/api/*" to = "https://tml-villa-api-d279.onrender.com/api/:splat" status = 200 [[redirects]] from = "/*" to = "/index.html" status = 200
