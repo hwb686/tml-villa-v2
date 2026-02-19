@@ -82,18 +82,20 @@ export default function TicketBookingPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white py-12 px-4">
+      <div className="min-h-screen bg-cream py-12 px-4 animate-fade-in">
         <div className="max-w-md mx-auto">
-          <Card className="border-blue-200">
+          <Card className="border-champagne/20 shadow-card">
             <CardContent className="pt-8 pb-8 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">预订成功</h2>
-              <p className="text-gray-600 mb-6">您的票务预订已提交，我们会尽快为您安排。</p>
+              <div className="w-16 h-16 bg-champagne/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-champagne" />
+              </div>
+              <h2 className="text-2xl font-serif font-semibold text-ink mb-2">预订成功</h2>
+              <p className="text-warm-gray mb-6">您的票务预订已提交，我们会尽快为您安排。</p>
               <div className="flex gap-3 justify-center">
                 <Button
                   onClick={() => navigate('/')}
                   variant="outline"
-                  className="border-blue-300"
+                  className="border-champagne text-champagne hover:bg-champagne hover:text-white rounded-lg"
                 >
                   返回首页
                 </Button>
@@ -108,7 +110,7 @@ export default function TicketBookingPage() {
                       remark: '',
                     });
                   }}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                  className="bg-champagne hover:bg-champagne-dark text-white rounded-lg"
                 >
                   继续预订
                 </Button>
@@ -121,33 +123,33 @@ export default function TicketBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white py-12 px-4">
+    <div className="min-h-screen bg-cream py-12 px-4 animate-fade-in">
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
           onClick={() => navigate('/')}
-          className="mb-4 text-gray-600 hover:text-gray-900"
+          className="mb-4 text-warm-gray hover:text-ink hover:bg-champagne/10"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           返回
         </Button>
 
-        <Card className="border-blue-200 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-500/10 to-blue-600/10">
+        <Card className="border-champagne/20 shadow-card">
+          <CardHeader className="bg-champagne/5 border-b border-champagne/10">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-lg">
+              <div className="p-2 bg-champagne rounded-lg">
                 <Ticket className="w-6 h-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-xl text-gray-900">票务预订</CardTitle>
-                <CardDescription>预订景点、表演、游艇等票务</CardDescription>
+                <CardTitle className="text-xl font-serif text-ink">票务预订</CardTitle>
+                <CardDescription className="text-warm-gray">预订景点、表演、游艇等票务</CardDescription>
               </div>
             </div>
           </CardHeader>
 
           <CardContent className="pt-6">
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-4 border-red-200 bg-red-50">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -155,75 +157,80 @@ export default function TicketBookingPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Room Number */}
               <div className="space-y-2">
-                <Label htmlFor="roomNumber">房号 <span className="text-red-500">*</span></Label>
+                <Label htmlFor="roomNumber" className="text-ink">房号 <span className="text-red-500">*</span></Label>
                 <Input
                   id="roomNumber"
                   placeholder="请输入您的房号，如：A101"
                   value={formData.roomNumber}
                   onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                  className="border-blue-200 focus:border-blue-400"
+                  className="border-champagne/30 focus:border-champagne focus:ring-champagne/20 rounded-lg"
                   required
                 />
               </div>
 
               {/* Ticket Selection */}
               <div className="space-y-2">
-                <Label>
+                <Label className="text-ink">
                   选择票务 <span className="text-red-500">*</span>
                   {formData.selectedConfig && (
-                    <span className="ml-2 text-sm font-normal text-blue-600">
+                    <span className="ml-2 text-sm font-normal text-champagne">
                       ✓ 已选择: {formData.selectedConfig.name}
                     </span>
                   )}
                 </Label>
                 {configs.length === 0 ? (
-                  <p className="text-gray-500 text-sm">暂无可预订票务</p>
+                  <p className="text-warm-gray text-sm">暂无可预订票务</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {configs.map((config) => (
                       <div
                         key={config.id}
                         onClick={() => setFormData({ ...formData, selectedConfig: config })}
-                        className={`cursor-pointer rounded-lg border-2 transition-all overflow-hidden relative ${
+                        className={`cursor-pointer rounded-xl border-2 transition-all duration-300 overflow-hidden relative bg-white group ${
                           formData.selectedConfig?.id === config.id
-                            ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-champagne shadow-card ring-1 ring-champagne/20'
+                            : 'border-champagne/20 hover:border-champagne/50 hover:shadow-md'
                         }`}
                       >
                         {formData.selectedConfig?.id === config.id && (
-                          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full z-10">
-                            ✓ 已选中
+                          <div className="absolute top-3 left-3 bg-champagne text-white text-xs px-2 py-1 rounded-full z-10 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            已选中
                           </div>
                         )}
-                        <div className="aspect-video bg-gray-100">
+                        <div className="aspect-video bg-cream">
                           {config.image ? (
-                            <img src={config.image} alt={config.name} className="w-full h-full object-cover" />
+                            <img 
+                              src={config.image} 
+                              alt={config.name} 
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                            />
                           ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400">
+                            <div className="flex items-center justify-center h-full text-champagne/40">
                               <Ticket size={32} />
                             </div>
                           )}
                         </div>
-                        <div className="p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-medium">{config.name}</h4>
-                            <Badge className="bg-blue-100 text-blue-800">฿{config.price}/张</Badge>
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-ink font-serif">{config.name}</h4>
+                            <Badge className="bg-champagne/10 text-champagne border-champagne/20">฿{config.price}/张</Badge>
                           </div>
-                          <Badge variant="outline" className="mb-1">{config.ticketType}</Badge>
-                          <p className="text-sm text-gray-500 whitespace-pre-wrap">{config.description}</p>
+                          <Badge variant="outline" className="mb-2 border-champagne/30 text-warm-gray">{config.ticketType}</Badge>
+                          <p className="text-sm text-warm-gray whitespace-pre-wrap leading-relaxed">{config.description}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
                 {!formData.selectedConfig && (
-                  <p className="text-sm text-red-500 mt-2">请点击上方卡片选择一个票务</p>
+                  <p className="text-sm text-warm-gray mt-2">请点击上方卡片选择一个票务</p>
                 )}
               </div>
 
               {/* Quantity */}
               <div className="space-y-2">
-                <Label htmlFor="quantity">预订数量 <span className="text-red-500">*</span></Label>
+                <Label htmlFor="quantity" className="text-ink">预订数量 <span className="text-red-500">*</span></Label>
                 <Input
                   id="quantity"
                   type="number"
@@ -231,15 +238,15 @@ export default function TicketBookingPage() {
                   max={20}
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                  className="border-blue-200 focus:border-blue-400 w-32"
+                  className="border-champagne/30 focus:border-champagne focus:ring-champagne/20 w-32 rounded-lg"
                   required
                 />
               </div>
 
               {/* Visit Date */}
               <div className="space-y-2">
-                <Label htmlFor="visitDate">
-                  <CalendarDays className="inline w-4 h-4 mr-1" />
+                <Label htmlFor="visitDate" className="text-ink">
+                  <CalendarDays className="inline w-4 h-4 mr-1 text-champagne" />
                   期望参观日期 <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -247,35 +254,35 @@ export default function TicketBookingPage() {
                   type="date"
                   value={formData.visitDate}
                   onChange={(e) => setFormData({ ...formData, visitDate: e.target.value })}
-                  className="border-blue-200 focus:border-blue-400 w-48"
+                  className="border-champagne/30 focus:border-champagne focus:ring-champagne/20 w-48 rounded-lg"
                   required
                 />
               </div>
 
               {/* Remark */}
               <div className="space-y-2">
-                <Label htmlFor="remark">备注说明</Label>
+                <Label htmlFor="remark" className="text-ink">备注说明</Label>
                 <Textarea
                   id="remark"
                   placeholder="如有特殊需求请在此说明"
                   value={formData.remark}
                   onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                  className="border-blue-200 focus:border-blue-400 min-h-[100px]"
+                  className="border-champagne/30 focus:border-champagne focus:ring-champagne/20 min-h-[100px] rounded-lg"
                   maxLength={200}
                 />
-                <p className="text-xs text-gray-500 text-right">{formData.remark.length}/200</p>
+                <p className="text-xs text-warm-gray text-right">{formData.remark.length}/200</p>
               </div>
 
               {/* Price Summary */}
               {formData.selectedConfig && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-600">{formData.selectedConfig.name}</span>
-                    <span>฿{formData.selectedConfig.price} × {formData.quantity}张</span>
+                <div className="bg-champagne/5 rounded-xl p-5 border border-champagne/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-warm-gray">{formData.selectedConfig.name}</span>
+                    <span className="text-ink">฿{formData.selectedConfig.price} × {formData.quantity}张</span>
                   </div>
-                  <div className="border-t border-blue-200 pt-2 flex items-center justify-between font-semibold text-lg">
-                    <span>总计</span>
-                    <span className="text-blue-600">฿{totalPrice}</span>
+                  <div className="border-t border-champagne/20 pt-3 flex items-center justify-between">
+                    <span className="font-serif text-lg text-ink">总计</span>
+                    <span className="font-serif text-2xl font-semibold text-champagne">฿{totalPrice}</span>
                   </div>
                 </div>
               )}
@@ -283,7 +290,7 @@ export default function TicketBookingPage() {
               <Button
                 type="submit"
                 disabled={isLoading || !formData.selectedConfig}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white h-12"
+                className="w-full bg-champagne hover:bg-champagne-dark text-white h-12 rounded-lg text-base transition-all duration-300 disabled:opacity-50"
               >
                 {isLoading ? (
                   <>

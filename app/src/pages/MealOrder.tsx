@@ -80,18 +80,20 @@ export default function MealOrderPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50/50 to-white py-12 px-4">
+      <div className="min-h-screen bg-[#F8F7F4] py-12 px-4 animate-fade-in">
         <div className="max-w-md mx-auto">
-          <Card className="border-amber-200">
+          <Card className="border-champagne/20 shadow-card">
             <CardContent className="pt-8 pb-8 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">订餐登记成功</h2>
-              <p className="text-gray-600 mb-6">您的订餐信息已提交，我们会尽快为您安排。</p>
+              <div className="w-20 h-20 rounded-full bg-champagne/10 flex items-center justify-center mx-auto mb-6 animate-scale-in">
+                <CheckCircle className="w-10 h-10 text-champagne" />
+              </div>
+              <h2 className="text-2xl font-serif font-medium text-ink mb-2">订餐登记成功</h2>
+              <p className="text-warm-gray mb-8">您的订餐信息已提交，我们会尽快为您安排。</p>
               <div className="flex gap-3 justify-center">
                 <Button
                   onClick={() => navigate('/')}
                   variant="outline"
-                  className="border-amber-300"
+                  className="border-champagne text-champagne hover:bg-champagne hover:text-white rounded-lg"
                 >
                   返回首页
                 </Button>
@@ -105,7 +107,7 @@ export default function MealOrderPage() {
                       remark: '',
                     });
                   }}
-                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                  className="bg-champagne hover:bg-champagne-dark text-white rounded-lg"
                 >
                   继续订餐
                 </Button>
@@ -118,33 +120,33 @@ export default function MealOrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50/50 to-white py-12 px-4">
+    <div className="min-h-screen bg-[#F8F7F4] py-12 px-4 animate-fade-in">
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
           onClick={() => navigate('/')}
-          className="mb-4 text-gray-600 hover:text-gray-900"
+          className="mb-4 text-warm-gray hover:text-ink transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           返回
         </Button>
 
-        <Card className="border-amber-200 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-amber-500/10 to-amber-600/10">
+        <Card className="border-champagne/20 shadow-card overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-champagne/10 to-champagne/5 border-b border-champagne/10">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500 rounded-lg">
+              <div className="p-2.5 bg-champagne rounded-xl">
                 <Utensils className="w-6 h-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-xl text-gray-900">订餐登记</CardTitle>
-                <CardDescription>选择您喜欢的套餐</CardDescription>
+                <CardTitle className="text-xl font-serif font-medium text-ink">订餐登记</CardTitle>
+                <CardDescription className="text-warm-gray">选择您喜欢的套餐</CardDescription>
               </div>
             </div>
           </CardHeader>
 
           <CardContent className="pt-6">
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-4 rounded-lg border-red-200">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -152,89 +154,100 @@ export default function MealOrderPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Room Number */}
               <div className="space-y-2">
-                <Label htmlFor="roomNumber">房号 <span className="text-red-500">*</span></Label>
+                <Label htmlFor="roomNumber" className="text-ink font-medium">房号 <span className="text-red-500">*</span></Label>
                 <Input
                   id="roomNumber"
                   placeholder="请输入您的房号，如：A101"
                   value={formData.roomNumber}
                   onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                  className="border-amber-200 focus:border-amber-400"
+                  className="border-champagne/30 focus:border-champagne rounded-lg transition-colors"
                   required
                 />
               </div>
 
               {/* Meal Type Tabs */}
               <div className="space-y-2">
-                <Label>选择用餐类型</Label>
+                <Label className="text-ink font-medium">选择用餐类型</Label>
                 <Tabs value={activeTab} onValueChange={(value) => {
                   setActiveTab(value);
                   // 切换用餐类型时清空已选配置
                   setFormData({ ...formData, selectedConfig: null });
                 }}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="BREAKFAST">早餐</TabsTrigger>
-                    <TabsTrigger value="DINNER">晚餐</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 bg-champagne/5 rounded-lg p-1">
+                    <TabsTrigger 
+                      value="BREAKFAST"
+                      className="rounded-md data-[state=active]:bg-champagne data-[state=active]:text-white transition-all"
+                    >
+                      早餐
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="DINNER"
+                      className="rounded-md data-[state=active]:bg-champagne data-[state=active]:text-white transition-all"
+                    >
+                      晚餐
+                    </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
 
               {/* Meal Config Selection */}
               <div className="space-y-2">
-                <Label>
+                <Label className="text-ink font-medium">
                   选择套餐 <span className="text-red-500">*</span>
                   {formData.selectedConfig && (
-                    <span className="ml-2 text-sm font-normal text-green-600">
+                    <span className="ml-2 text-sm font-normal text-champagne">
                       ✓ 已选择: {formData.selectedConfig.name}
                     </span>
                   )}
                 </Label>
                 {filteredConfigs.length === 0 ? (
-                  <p className="text-gray-500 text-sm">暂无{activeTab === 'BREAKFAST' ? '早餐' : '晚餐'}套餐</p>
+                  <p className="text-warm-gray text-sm">暂无{activeTab === 'BREAKFAST' ? '早餐' : '晚餐'}套餐</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredConfigs.map((config) => (
                       <div
                         key={config.id}
                         onClick={() => setFormData({ ...formData, selectedConfig: config })}
-                        className={`cursor-pointer rounded-lg border-2 transition-all overflow-hidden relative ${
+                        className={`cursor-pointer rounded-xl border-2 transition-all duration-300 overflow-hidden relative group ${
                           formData.selectedConfig?.id === config.id
-                            ? 'border-amber-500 ring-2 ring-amber-200 bg-amber-50'
-                            : 'border-gray-200 hover:border-amber-300'
+                            ? 'border-champagne ring-2 ring-champagne/20 bg-champagne/5'
+                            : 'border-champagne/20 hover:border-champagne/50 hover:shadow-md'
                         }`}
                       >
                         {formData.selectedConfig?.id === config.id && (
-                          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full z-10">
-                            ✓ 已选中
+                          <div className="absolute top-3 left-3 bg-champagne text-white text-xs px-2.5 py-1 rounded-full z-10 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            已选中
                           </div>
                         )}
-                        <div className="aspect-video bg-gray-100">
+                        <div className="aspect-video bg-cream">
                           {config.image ? (
-                            <img src={config.image} alt={config.name} className="w-full h-full object-cover" />
+                            <img src={config.image} alt={config.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400">
+                            <div className="flex items-center justify-center h-full text-champagne/40">
                               <Utensils size={32} />
                             </div>
                           )}
                         </div>
-                        <div className="p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-medium">{config.name}</h4>
-                            <Badge className="bg-amber-100 text-amber-800">฿{config.price}/人</Badge>
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-serif font-medium text-ink">{config.name}</h4>
+                            <Badge className="bg-champagne/10 text-champagne border-none font-medium">฿{config.price}/人</Badge>
                           </div>
-                          <p className="text-sm text-gray-500 whitespace-pre-wrap">{config.description}</p>
+                          <p className="text-sm text-warm-gray whitespace-pre-wrap line-clamp-2">{config.description}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
                 {!formData.selectedConfig && (
-                  <p className="text-sm text-red-500 mt-2">请点击上方卡片选择一个套餐</p>
+                  <p className="text-sm text-champagne mt-2">请点击上方卡片选择一个套餐</p>
                 )}
               </div>
 
               {/* People Count */}
               <div className="space-y-2">
-                <Label htmlFor="peopleCount">用餐人数 <span className="text-red-500">*</span></Label>
+                <Label htmlFor="peopleCount" className="text-ink font-medium">用餐人数 <span className="text-red-500">*</span></Label>
                 <div className="flex items-center gap-4">
                   <Input
                     id="peopleCount"
@@ -243,37 +256,37 @@ export default function MealOrderPage() {
                     max={20}
                     value={formData.peopleCount}
                     onChange={(e) => setFormData({ ...formData, peopleCount: parseInt(e.target.value) || 1 })}
-                    className="border-amber-200 focus:border-amber-400 w-32"
+                    className="border-champagne/30 focus:border-champagne w-32 rounded-lg transition-colors"
                     required
                   />
-                  <Users className="text-gray-400" size={20} />
+                  <Users className="text-champagne/60" size={20} />
                 </div>
               </div>
 
               {/* Remark */}
               <div className="space-y-2">
-                <Label htmlFor="remark">备注说明</Label>
+                <Label htmlFor="remark" className="text-ink font-medium">备注说明</Label>
                 <Textarea
                   id="remark"
                   placeholder="如有特殊需求请在此说明（如素食、儿童座椅等）"
                   value={formData.remark}
                   onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                  className="border-amber-200 focus:border-amber-400 min-h-[100px]"
+                  className="border-champagne/30 focus:border-champagne min-h-[100px] rounded-lg transition-colors resize-none"
                   maxLength={200}
                 />
-                <p className="text-xs text-gray-500 text-right">{formData.remark.length}/200</p>
+                <p className="text-xs text-warm-gray text-right">{formData.remark.length}/200</p>
               </div>
 
               {/* Price Summary */}
               {formData.selectedConfig && (
-                <div className="bg-amber-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-600">{formData.selectedConfig.name}</span>
-                    <span>฿{formData.selectedConfig.price} × {formData.peopleCount}人</span>
+                <div className="bg-gradient-to-r from-champagne/10 to-champagne/5 rounded-xl p-5 border border-champagne/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-warm-gray">{formData.selectedConfig.name}</span>
+                    <span className="text-ink">฿{formData.selectedConfig.price} × {formData.peopleCount}人</span>
                   </div>
-                  <div className="border-t border-amber-200 pt-2 flex items-center justify-between font-semibold text-lg">
-                    <span>总计</span>
-                    <span className="text-amber-600">฿{totalPrice}</span>
+                  <div className="border-t border-champagne/20 pt-3 flex items-center justify-between">
+                    <span className="font-serif font-medium text-lg text-ink">总计</span>
+                    <span className="font-serif text-2xl font-medium text-champagne">฿{totalPrice}</span>
                   </div>
                 </div>
               )}
@@ -281,7 +294,7 @@ export default function MealOrderPage() {
               <Button
                 type="submit"
                 disabled={isLoading || !formData.selectedConfig}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white h-12"
+                className="w-full bg-champagne hover:bg-champagne-dark text-white h-12 rounded-lg text-base font-medium transition-all duration-200 hover:shadow-lg hover:shadow-champagne/25 disabled:opacity-50"
               >
                 {isLoading ? (
                   <>
