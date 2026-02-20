@@ -1,0 +1,203 @@
+{
+  "project_name": "TML Villa",
+  "description": "泰国民宿管理平台 - 包含前端展示、管理后台和后端API",
+  "tech_stack": {
+    "frontend": "React + TypeScript + Vite",
+    "backend": "Node.js + Express + Prisma",
+    "database": "PostgreSQL (Supabase)",
+    "styling": "Tailwind CSS + shadcn/ui",
+    "deployment": "Netlify (前端) + Render (后端)"
+  },
+  "features": [
+    {
+      "id": "F001",
+      "category": "bugfix",
+      "priority": "high",
+      "description": "验证并修复首页 API Error 500 问题",
+      "steps": [
+        "访问 https://tml-villa.netlify.app",
+        "等待页面完全加载",
+        "检查控制台是否有错误",
+        "验证民宿列表和分类正常显示"
+      ],
+      "acceptance_criteria": [
+        "首页加载无 API Error 500",
+        "民宿列表正常显示",
+        "分类筛选正常工作",
+        "Edge Functions 正常响应"
+      ],
+      "passes": false,
+      "notes": "Edge Functions 已测试正常，问题可能在 Netlify 环境变量或预热逻辑"
+    },
+    {
+      "id": "F002",
+      "category": "deployment",
+      "priority": "high",
+      "description": "确认 Netlify 自动部署最新代码",
+      "steps": [
+        "检查 Netlify Dashboard 部署状态",
+        "验证最新 commit eae6340 已部署",
+        "对比线上代码和本地代码"
+      ],
+      "acceptance_criteria": [
+        "Netlify 显示最新部署成功",
+        "部署时间在 commit eae6340 之后",
+        "线上功能与本地一致"
+      ],
+      "passes": false,
+      "notes": "需登录 Netlify Dashboard 查看"
+    },
+    {
+      "id": "F003",
+      "category": "performance",
+      "priority": "high",
+      "description": "首页加载性能优化",
+      "steps": [
+        "使用 Lighthouse 测试首页性能",
+        "分析加载瓶颈",
+        "优化图片、代码分割等"
+      ],
+      "acceptance_criteria": [
+        "首页 LCP < 2.5s",
+        "FID < 100ms",
+        "CLS < 0.1"
+      ],
+      "passes": false,
+      "notes": "Render 冷启动 30-60秒是主要瓶颈，已用 Edge Functions 绕过"
+    },
+    {
+      "id": "F004",
+      "category": "feature",
+      "priority": "medium",
+      "description": "添加 React 错误边界组件",
+      "steps": [
+        "创建 ErrorBoundary 组件",
+        "包裹主要页面组件",
+        "添加友好的错误提示UI"
+      ],
+      "acceptance_criteria": [
+        "组件错误不会导致白屏",
+        "显示友好的错误信息",
+        "提供重试按钮"
+      ],
+      "passes": false,
+      "notes": "之前白屏问题已修复，但需要错误边界防止未来问题"
+    },
+    {
+      "id": "F005",
+      "category": "feature",
+      "priority": "medium",
+      "description": "门票预订功能完善",
+      "steps": [
+        "测试门票预订流程",
+        "验证订单创建",
+        "检查管理后台订单显示"
+      ],
+      "acceptance_criteria": [
+        "用户可以选择门票并预订",
+        "订单正确保存到数据库",
+        "管理后台可以查看订单"
+      ],
+      "passes": false,
+      "notes": "页面已存在 TicketBooking.tsx 和 TicketOrders.tsx"
+    },
+    {
+      "id": "F006",
+      "category": "feature",
+      "priority": "medium",
+      "description": "餐饮订单功能完善",
+      "steps": [
+        "测试餐饮订单流程",
+        "验证订单创建",
+        "检查管理后台订单显示"
+      ],
+      "acceptance_criteria": [
+        "用户可以选择餐饮并下单",
+        "订单正确保存到数据库",
+        "管理后台可以查看订单"
+      ],
+      "passes": false,
+      "notes": "页面已存在 MealOrder.tsx 和 MealOrders.tsx"
+    },
+    {
+      "id": "F007",
+      "category": "feature",
+      "priority": "medium",
+      "description": "平台同步功能完善",
+      "steps": [
+        "检查平台同步API",
+        "测试同步功能",
+        "验证配置管理"
+      ],
+      "acceptance_criteria": [
+        "可以配置平台映射",
+        "同步状态正确显示",
+        "错误处理完善"
+      ],
+      "passes": false,
+      "notes": "相关文件：platformSyncApi.ts, PlatformMappingManager"
+    },
+    {
+      "id": "F008",
+      "category": "maintenance",
+      "priority": "low",
+      "description": "清理未使用的代码和导入",
+      "steps": [
+        "运行 ESLint 检查未使用变量",
+        "删除未使用的导入",
+        "删除未使用的文件"
+      ],
+      "acceptance_criteria": [
+        "无 ESLint 警告",
+        "代码整洁",
+        "构建无警告"
+      ],
+      "passes": false,
+      "notes": "tsconfig 已关闭 noUnusedLocals，后续可重新开启"
+    },
+    {
+      "id": "F009",
+      "category": "testing",
+      "priority": "low",
+      "description": "添加单元测试",
+      "steps": [
+        "配置测试框架",
+        "编写核心功能测试",
+        "集成到 CI/CD"
+      ],
+      "acceptance_criteria": [
+        "测试覆盖率 > 50%",
+        "关键功能有测试",
+        "CI 中自动运行测试"
+      ],
+      "passes": false,
+      "notes": "可考虑使用 Vitest + Testing Library"
+    },
+    {
+      "id": "F010",
+      "category": "documentation",
+      "priority": "low",
+      "description": "完善项目文档",
+      "steps": [
+        "更新 README.md",
+        "补充 API 文档",
+        "添加开发指南"
+      ],
+      "acceptance_criteria": [
+        "README 包含项目介绍和快速开始",
+        "API 有基本文档",
+        "新开发者可以快速上手"
+      ],
+      "passes": false,
+      "notes": "已有 TechSpec.md 和 HANDOVER.md"
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-02-20T00:00:00Z",
+    "updated_at": "2026-02-20T00:00:00Z",
+    "total_features": 10,
+    "completed_features": 0,
+    "current_phase": "initialization",
+    "notes": "这是现有项目，已有很多功能完成。此列表只包含待完成/待验证的功能。"
+  }
+}
