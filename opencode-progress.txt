@@ -15,21 +15,21 @@
 
 ## 概览
 - **功能总数:** 10
-- **已完成:** 0
+- **已完成:** 2
 - **进行中:** 0
-- **剩余:** 10
-- **当前阶段:** 初始化
+- **剩余:** 8
+- **当前阶段:** 开发中
 
 ## 部署信息
 | 服务 | URL |
 |------|-----|
-| 前端 | https://tml-villa.netlify.app |
+| 前端 | https://tmlvilla.netlify.app |
 | 后端 | https://tml-villa-api-d279.onrender.com |
 | Supabase | https://tlorpxejqqmrdcfgvyhl.supabase.co |
 
 ## 已知问题
-1. 首页 API Error 500 - 待验证是否已修复
-2. Netlify 部署状态 - 待确认最新代码已部署
+1. ~~首页 API Error 500~~ ✅ 已验证不存在此问题
+2. ~~Netlify 部署状态~~ ✅ 已确认正常运行
 
 ══════════════════════════════════════════════════════════════
 
@@ -80,7 +80,41 @@
 
 ## 会话日志 / SESSION LOG
 
-[会话记录将由编码Agent追加到这里]
+## 会话 1 - 2026-02-20
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F001, F002
+
+### 开始时状态:
+- 已完成功能: 0
+- 当前功能: F001
+- 已知问题: 首页 API Error 500，Netlify 部署状态未知
+
+### 完成的工作:
+- [x] 使用 Playwright 测试首页 tmlvilla.netlify.app
+- [x] 发现正确网址是 tmlvilla.netlify.app（无连字符）
+- [x] 验证首页、民宿列表、详情页均正常
+- [x] 确认无 API Error 500 问题
+- [x] 推送本地 commit 到 GitHub (1ea58da)
+
+### 执行的测试:
+- Playwright 浏览器自动化测试
+- 首页加载 ✅
+- 民宿列表显示 ✅
+- 民宿详情页 ✅
+- 日历组件 ✅
+
+### 发现的小问题:
+- 4个404错误（图片资源）- 不影响功能
+- 1个跨域错误 - 不影响功能
+
+### 修改的文件:
+- feature_list.json (更新 F001, F002 状态)
+- opencode-progress.txt (此文件)
+
+### 结束时状态:
+- 已完成功能: 2
+- 下一个功能: F003 (首页加载性能优化)
+- 备注: 网站正常运行，交接文档中提到的 API Error 500 未复现
 
 ---
 
