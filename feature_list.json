@@ -6,6 +6,33 @@
     "services": ["homestay", "car_rental", "meal", "ticket"],
     "vs_airbnb": "所有业务自有，非商家入驻模式"
   },
+  "deployment_constraints": {
+    "netlify_free": {
+      "bandwidth": "100GB/月",
+      "build_minutes": "300分钟/月",
+      "risk": "low",
+      "optimization": "图片用 Supabase Storage"
+    },
+    "render_free": {
+      "hours": "750小时/月",
+      "ram": "512MB",
+      "sleep": "15分钟无活动休眠",
+      "risk": "medium",
+      "optimization": "Edge Functions 绕过冷启动，避免内存缓存"
+    },
+    "supabase_free": {
+      "database": "500MB",
+      "bandwidth": "5GB/月",
+      "storage": "2GB",
+      "risk": "high",
+      "optimization": "数据归档、索引优化、限制字段长度"
+    }
+  },
+  "payment_status": {
+    "current": "暂不实现",
+    "future": "P3 优先级，后续迭代",
+    "workaround": "订单确认由管理员手动操作"
+  },
   "tech_stack": {
     "frontend": "React + TypeScript + Vite",
     "backend": "Node.js + Express + Prisma",
@@ -18,126 +45,120 @@
       "category": "bugfix",
       "priority": "P0",
       "title": "首页 API 错误修复",
-      "description": "验证并修复首页 API Error 500 问题",
       "status": "done",
       "passes": true,
-      "notes": "2026-02-20 完成：Edge Functions 生效"
+      "notes": "Edge Functions 生效"
     },
     {
       "id": "F002",
       "category": "deployment",
       "priority": "P0",
       "title": "Netlify 部署验证",
-      "description": "确认 Netlify 自动部署最新代码",
       "status": "done",
       "passes": true,
-      "notes": "2026-02-20 完成"
+      "notes": "完成"
     },
     {
       "id": "F003",
       "category": "performance",
       "priority": "P0",
       "title": "首页加载性能优化",
-      "description": "Edge Functions 绕过 Render 冷启动",
       "status": "done",
       "passes": true,
-      "notes": "API 响应从 6s 降到 1.2s"
+      "notes": "API 响应 ~1.2s"
     },
     {
       "id": "F004",
       "category": "auth",
       "priority": "P0",
       "title": "用户注册/登录系统",
-      "description": "实现用户注册、登录、登出功能",
-      "steps": ["用户邮箱注册", "邮箱验证", "登录/登出", "密码找回"],
-      "acceptance_criteria": ["用户可注册账号", "可登录登出", "Token 管理"],
+      "description": "用户邮箱注册、登录、登出",
+      "free_limit_impact": "无影响，JWT 无状态",
+      "steps": ["注册页面", "邮箱验证", "登录/登出", "Token 管理"],
+      "acceptance_criteria": ["用户可注册", "可登录登出", "密码加密存储"],
       "status": "missing",
-      "passes": false,
-      "notes": "目前只有管理员登录，缺少用户端登录"
+      "passes": false
     },
     {
       "id": "F005",
       "category": "booking",
       "priority": "P0",
-      "title": "民宿预订流程完整性",
-      "description": "完成民宿预订的完整流程",
-      "steps": ["选择日期", "选择人数", "确认订单", "支付", "确认"],
-      "acceptance_criteria": ["日期选择校验库存", "生成订单", "订单状态流转"],
+      "title": "民宿预订流程",
+      "description": "无支付模式的预订流程：选择日期 → 提交预订 → 管理员确认",
+      "free_limit_impact": "无影响",
+      "steps": ["选择日期", "选择人数", "提交预订", "后台确认/拒绝"],
+      "acceptance_criteria": ["日期校验库存", "生成订单", "管理员可确认/拒绝"],
       "status": "partial",
       "passes": false,
-      "notes": "有详情页和日历，但预订流程不完整"
+      "notes": "有详情页，缺预订提交和确认流程"
     },
     {
       "id": "F006",
       "category": "payment",
-      "priority": "P0",
-      "title": "支付集成",
-      "description": "集成支付功能（支付宝/微信/Stripe/泰国本地支付）",
-      "steps": ["选择支付方式", "跳转支付", "支付回调", "订单状态更新"],
-      "acceptance_criteria": ["支持多种支付方式", "支付成功后订单确认"],
-      "status": "missing",
+      "priority": "P3",
+      "title": "支付集成（未来）",
+      "description": "后续迭代，暂不实现",
+      "status": "planned",
       "passes": false,
-      "notes": "目前无支付功能"
+      "notes": "降级为 P3，无支付时由管理员手动确认订单"
     },
     {
       "id": "F007",
       "category": "inventory",
       "priority": "P0",
       "title": "民宿库存管理",
-      "description": "管理民宿房间可用性",
-      "steps": ["设置房间数量", "日期库存管理", "预订扣减库存", "取消释放库存"],
-      "acceptance_criteria": ["日历视图显示可用性", "预订时校验库存", "超售保护"],
+      "description": "管理房间可用性，支持日期维度库存",
+      "free_limit_impact": "⚠️ 高影响 - 500MB 数据库限制",
+      "optimization": "只存未来90天库存，过期自动删除",
+      "steps": ["设置房间数量", "日历视图", "预订扣减", "取消释放"],
+      "acceptance_criteria": ["日历显示可用性", "预订校验库存", "超售保护"],
       "status": "missing",
-      "passes": false,
-      "notes": "数据库有 HouseStock 模型但功能未实现"
+      "passes": false
     },
     {
       "id": "F008",
       "category": "inventory",
       "priority": "P0",
-      "title": "车辆库存管理",
+      "title": "车辆库存管理（含配司机）",
       "description": "管理车辆可用性，支持配司机选项",
-      "steps": ["设置车辆数量", "司机配置", "日期库存管理", "预订校验"],
-      "acceptance_criteria": ["车辆日历视图", "可配司机选项", "司机排班"],
+      "free_limit_impact": "⚠️ 高影响 - 需司机排班表",
+      "optimization": "排班表只存未来30天",
+      "steps": ["车辆数量管理", "司机配置", "日期库存", "预订校验"],
+      "acceptance_criteria": ["车辆日历", "可配司机选项", "司机排班"],
       "status": "missing",
-      "passes": false,
-      "notes": "CarConfig 存在，但缺少库存和司机管理"
+      "passes": false
     },
     {
       "id": "F009",
       "category": "user",
       "priority": "P1",
       "title": "用户中心",
-      "description": "用户个人中心页面",
-      "steps": ["个人信息管理", "我的订单", "收藏列表", "消息通知"],
-      "acceptance_criteria": ["查看/编辑个人信息", "订单历史", "收藏管理"],
+      "description": "用户个人中心：订单、收藏、个人信息",
+      "free_limit_impact": "无影响",
       "status": "missing",
-      "passes": false,
-      "notes": "无用户中心页面"
+      "passes": false
     },
     {
       "id": "F010",
       "category": "review",
       "priority": "P1",
       "title": "评价系统",
-      "description": "用户对民宿/服务进行评价",
-      "steps": ["订单完成后评价", "评分+评论", "显示在详情页"],
-      "acceptance_criteria": ["用户可提交评价", "评价显示在列表/详情", "评分统计"],
+      "description": "用户评价民宿/服务",
+      "free_limit_impact": "⚠️ 中影响 - 评价内容占存储",
+      "optimization": "评价字数限制200字，图片最多3张",
       "status": "missing",
-      "passes": false,
-      "notes": "Homestay 有 rating/reviews 字段但无评价功能"
+      "passes": false
     },
     {
       "id": "F011",
       "category": "notification",
       "priority": "P1",
-      "title": "消息通知系统",
+      "title": "消息通知",
       "description": "订单状态变更通知",
-      "steps": ["订单确认通知", "支付成功通知", "入住提醒", "评价提醒"],
-      "acceptance_criteria": ["站内消息", "邮件通知", "通知列表"],
+      "free_limit_impact": "⚠️ 高影响 - 通知记录占存储",
+      "optimization": "通知只保留30天",
       "status": "missing",
-      "passes": false,
-      "notes": "无通知功能"
+      "passes": false
     },
     {
       "id": "F012",
@@ -145,11 +166,10 @@
       "priority": "P1",
       "title": "员工管理",
       "description": "管理司机、清洁、前台等员工",
-      "steps": ["员工信息管理", "角色权限", "排班管理", "绩效统计"],
-      "acceptance_criteria": ["员工 CRUD", "角色分配", "排班日历"],
+      "free_limit_impact": "无影响",
       "status": "missing",
       "passes": false,
-      "notes": "自有业务需要管理员工"
+      "notes": "自有业务特有需求"
     },
     {
       "id": "F013",
@@ -157,11 +177,10 @@
       "priority": "P1",
       "title": "成本核算",
       "description": "自有业务成本管理",
-      "steps": ["资产成本录入", "维护费用", "人力成本", "利润计算"],
-      "acceptance_criteria": ["成本录入", "收支统计", "利润报表"],
+      "free_limit_impact": "无影响",
       "status": "partial",
       "passes": false,
-      "notes": "有 Transaction 模型，但成本核算功能不完整"
+      "notes": "自有业务特有需求"
     },
     {
       "id": "F014",
@@ -169,159 +188,197 @@
       "priority": "P1",
       "title": "运营报表",
       "description": "收入/订单/用户数据报表",
-      "steps": ["收入统计", "订单统计", "入住率", "图表展示"],
-      "acceptance_criteria": ["日报/周报/月报", "数据可视化", "导出功能"],
+      "free_limit_impact": "无影响",
       "status": "partial",
-      "passes": false,
-      "notes": "Dashboard 有基础展示，报表功能不完整"
+      "passes": false
     },
     {
       "id": "F015",
       "category": "calendar",
       "priority": "P1",
-      "title": "日历视图",
-      "description": "管理端日历视图查看房间/车辆可用性",
-      "steps": ["月历视图", "点击查看详情", "快速预订", "状态标识"],
-      "acceptance_criteria": ["日历显示库存状态", "可快速操作", "颜色标识"],
+      "title": "管理端日历视图",
+      "description": "日历查看房间/车辆可用性",
+      "free_limit_impact": "无影响",
       "status": "missing",
-      "passes": false,
-      "notes": "管理端缺少日历视图"
+      "passes": false
     },
     {
       "id": "F016",
-      "category": "search",
-      "priority": "P2",
-      "title": "搜索优化",
-      "description": "高级搜索和筛选功能",
-      "steps": ["关键词搜索", "多条件筛选", "排序选项", "地图模式"],
-      "acceptance_criteria": ["搜索结果准确", "筛选条件生效", "支持排序"],
-      "status": "partial",
+      "category": "monitoring",
+      "priority": "P1",
+      "title": "免费额度监控",
+      "description": "监控 Supabase/Netlify/Render 免费额度使用情况",
+      "free_limit_impact": "核心功能",
+      "steps": ["数据库大小监控", "带宽使用监控", "预警通知"],
+      "acceptance_criteria": ["超80%预警", "Dashboard显示使用量"],
+      "status": "missing",
       "passes": false,
-      "notes": "有基础筛选，缺少高级搜索"
+      "notes": "防止超限导致服务中断"
     },
     {
       "id": "F017",
+      "category": "search",
+      "priority": "P2",
+      "title": "搜索优化",
+      "description": "高级搜索和筛选",
+      "free_limit_impact": "无影响",
+      "status": "partial",
+      "passes": false
+    },
+    {
+      "id": "F018",
       "category": "favorite",
       "priority": "P2",
       "title": "收藏功能",
       "description": "用户收藏民宿",
-      "steps": ["点击收藏", "收藏列表", "取消收藏"],
-      "acceptance_criteria": ["收藏状态同步", "收藏列表展示"],
+      "free_limit_impact": "无影响",
       "status": "partial",
-      "passes": false,
-      "notes": "Homestay 有 isFavorite 字段但功能不完整"
-    },
-    {
-      "id": "F018",
-      "category": "i18n",
-      "priority": "P2",
-      "title": "多语言完善",
-      "description": "完善中/英/泰三语支持",
-      "steps": ["翻译文件完善", "语言切换", "语言持久化"],
-      "acceptance_criteria": ["三种语言切换", "翻译完整", "默认语言设置"],
-      "status": "partial",
-      "passes": false,
-      "notes": "有 i18n 框架但翻译不完整"
+      "passes": false
     },
     {
       "id": "F019",
+      "category": "i18n",
+      "priority": "P2",
+      "title": "多语言完善",
+      "description": "中/英/泰三语支持",
+      "free_limit_impact": "无影响",
+      "status": "partial",
+      "passes": false
+    },
+    {
+      "id": "F020",
       "category": "mobile",
       "priority": "P2",
       "title": "移动端适配",
       "description": "优化移动端体验",
-      "steps": ["响应式布局检查", "触摸交互优化", "移动端导航"],
-      "acceptance_criteria": ["移动端可用", "触摸友好", "性能优化"],
+      "free_limit_impact": "无影响",
       "status": "partial",
-      "passes": false,
-      "notes": "有响应式但需优化"
-    },
-    {
-      "id": "F020",
-      "category": "tech",
-      "priority": "P2",
-      "title": "错误边界组件",
-      "description": "添加 React 错误边界防止白屏",
-      "steps": ["创建 ErrorBoundary", "包裹主要组件", "友好错误提示"],
-      "acceptance_criteria": ["错误不白屏", "可重试", "错误日志"],
-      "status": "missing",
-      "passes": false,
-      "notes": "之前有白屏问题"
+      "passes": false
     },
     {
       "id": "F021",
+      "category": "tech",
+      "priority": "P2",
+      "title": "错误边界组件",
+      "description": "防止白屏",
+      "free_limit_impact": "无影响",
+      "status": "missing",
+      "passes": false
+    },
+    {
+      "id": "F022",
       "category": "marketing",
       "priority": "P2",
       "title": "营销工具",
       "description": "优惠券、促销活动",
-      "steps": ["创建优惠券", "活动配置", "用户领取使用"],
-      "acceptance_criteria": ["优惠券管理", "订单使用优惠", "活动展示"],
+      "free_limit_impact": "⚠️ 中影响 - 优惠券数据",
       "status": "missing",
-      "passes": false,
-      "notes": "无营销功能"
-    },
-    {
-      "id": "F022",
-      "category": "merchant",
-      "priority": "P3",
-      "title": "商家入驻（未来）",
-      "description": "支持第三方商家入驻平台",
-      "steps": ["商家注册", "商品管理", "订单分成", "结算"],
-      "acceptance_criteria": ["商家后台", "商品审核", "结算功能"],
-      "status": "planned",
-      "passes": false,
-      "notes": "未来规划，架构需预留"
+      "passes": false
     },
     {
       "id": "F023",
+      "category": "merchant",
+      "priority": "P3",
+      "title": "商家入驻（未来）",
+      "description": "支持第三方商家入驻",
+      "status": "planned",
+      "passes": false
+    },
+    {
+      "id": "F024",
       "category": "membership",
       "priority": "P3",
       "title": "会员系统（未来）",
       "description": "积分、会员等级",
-      "steps": ["会员等级", "积分获取/消费", "会员权益"],
-      "acceptance_criteria": ["等级体系", "积分系统", "权益展示"],
       "status": "planned",
-      "passes": false,
-      "notes": "未来规划"
-    },
-    {
-      "id": "F024",
-      "category": "distribution",
-      "priority": "P3",
-      "title": "分销系统（未来）",
-      "description": "代理商分销",
-      "steps": ["代理商管理", "分销链接", "佣金结算"],
-      "acceptance_criteria": ["代理商后台", "佣金计算", "结算功能"],
-      "status": "planned",
-      "passes": false,
-      "notes": "未来规划"
+      "passes": false
     },
     {
       "id": "F025",
       "category": "testing",
       "priority": "P2",
       "title": "单元测试",
-      "description": "添加核心功能测试",
-      "steps": ["配置测试框架", "编写核心测试", "CI 集成"],
-      "acceptance_criteria": ["测试覆盖 > 50%", "CI 自动运行"],
+      "description": "核心功能测试",
+      "free_limit_impact": "无影响",
+      "status": "missing",
+      "passes": false
+    },
+    {
+      "id": "F026",
+      "category": "config",
+      "priority": "P0",
+      "title": "业务配置系统",
+      "description": "统一管理各业务线的配置，包括订单确认模式开关",
+      "free_limit_impact": "无影响",
+      "config_items": {
+        "homestay_manual_confirm": "民宿订单是否需要人工确认（默认true）",
+        "car_manual_confirm": "租车订单是否需要人工确认（默认true）",
+        "meal_manual_confirm": "餐饮订单是否需要人工确认（默认false）",
+        "ticket_manual_confirm": "票务订单是否需要人工确认（默认false）"
+      },
+      "steps": ["创建配置表", "管理后台配置界面", "订单流程读取配置"],
+      "acceptance_criteria": ["管理员可切换确认模式", "配置实时生效", "每种业务独立配置"],
       "status": "missing",
       "passes": false,
-      "notes": "无测试"
+      "notes": "核心功能：所有业务都有独立的确认模式开关"
     }
   ],
+  "data_model_optimizations": {
+    "storage_strategy": {
+      "house_stock": "只存未来90天，过期删除",
+      "driver_schedule": "只存未来30天",
+      "notifications": "只保留30天",
+      "order_logs": "归档到单独表"
+    },
+    "field_constraints": {
+      "description": "最大500字符",
+      "remark": "最大200字符",
+      "review_content": "最大200字符"
+    },
+    "index_strategy": {
+      "orders": "[status, createdAt]",
+      "stocks": "[date]",
+      "schedules": "[date, status]"
+    },
+    "business_config_model": {
+      "description": "业务配置表 - 核心功能，存储各业务线的开关和参数",
+      "prisma_schema": "model BusinessConfig { id String @id @default(cuid()) key String @unique value String description String? updatedAt DateTime @updatedAt @@map(\"business_configs\") }",
+      "default_configs": [
+        { "key": "homestay.manual_confirm", "value": "true" },
+        { "key": "car.manual_confirm", "value": "true" },
+        { "key": "meal.manual_confirm", "value": "false" },
+        { "key": "ticket.manual_confirm", "value": "false" }
+      ]
+    }
+  },
+  "order_flow_without_payment": {
+    "description": "订单确认模式由后台配置决定，每种业务独立配置",
+    "default_settings": {
+      "homestay": { "manual_confirm": true, "note": "民宿默认需要人工确认" },
+      "car": { "manual_confirm": true, "note": "租车默认需要人工确认" },
+      "meal": { "manual_confirm": false, "note": "餐饮默认即时确认" },
+      "ticket": { "manual_confirm": false, "note": "票务默认即时确认" }
+    },
+    "instant_confirm_flow": "用户预订 → 自动确认 → 完成",
+    "manual_confirm_flow": "用户预订 → 管理员确认/拒绝 → 完成/取消",
+    "states": ["pending", "confirmed", "completed", "cancelled"],
+    "config_feature": "F026 业务配置系统"
+  },
   "metadata": {
     "created_at": "2026-02-20T00:00:00Z",
-    "updated_at": "2026-02-20T04:30:00Z",
-    "total_features": 25,
+    "updated_at": "2026-02-20T05:35:00Z",
+    "total_features": 26,
     "done_features": 3,
     "missing_features": 14,
-    "partial_features": 5,
+    "partial_features": 6,
     "planned_features": 3,
     "priority_breakdown": {
-      "P0": 8,
+      "P0": 7,
       "P1": 7,
       "P2": 6,
-      "P3": 3
+      "P3": 6
     },
+    "high_risk_features": ["F007", "F008", "F011"],
     "next_feature": "F004 - 用户注册/登录系统"
   }
 }
