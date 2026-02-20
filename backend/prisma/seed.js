@@ -8,7 +8,7 @@ async function main() {
     update: {},
     create: {
       username: 'admin',
-      password: '11345', // Plain text as requested
+      password: 'admin123', // Default admin password
       name: 'Administrator',
     },
   });

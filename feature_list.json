@@ -41,6 +41,27 @@
   },
   "features": [
     {
+      "id": "F000",
+      "category": "bugfix",
+      "priority": "P0",
+      "title": "【紧急】后台管理界面白屏修复",
+      "description": "管理后台页面 http://localhost:5173/#/admin 显示白屏，需要检查并修复问题",
+      "status": "done",
+      "passes": true,
+      "steps": [
+        "检查 AdminApp.tsx 是否有渲染错误",
+        "检查浏览器控制台错误信息",
+        "检查路由配置是否正确",
+        "修复导致白屏的代码问题"
+      ],
+      "acceptance_criteria": [
+        "管理后台能正常显示",
+        "无控制台错误",
+        "侧边栏导航正常工作"
+      ],
+      "notes": "已于 2026-02-21 修复。问题原因：Header.tsx 文件格式错误（所有代码在一行），导致 React.Children.only 错误。修复方式：重新格式化 Header.tsx 文件。同时更新了 seed.js 中的默认密码。"
+    },
+    {
       "id": "F001",
       "category": "bugfix",
       "priority": "P0",
@@ -367,19 +388,20 @@
   },
   "metadata": {
     "created_at": "2026-02-20T00:00:00Z",
-    "updated_at": "2026-02-20T07:25:00Z",
-    "total_features": 26,
+    "updated_at": "2026-02-20T15:30:00Z",
+    "total_features": 27,
     "done_features": 6,
+    "in_progress_features": 1,
     "missing_features": 13,
     "partial_features": 5,
     "planned_features": 3,
     "priority_breakdown": {
-      "P0": 5,
+      "P0": 6,
       "P1": 7,
       "P2": 6,
       "P3": 6
     },
     "high_risk_features": ["F007", "F008", "F011"],
-    "next_feature": "F007 - 民宿库存管理"
+    "next_feature": "F000 - 【紧急】后台管理界面白屏修复"
   }
 }
