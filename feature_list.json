@@ -1,203 +1,327 @@
 {
   "project_name": "TML Villa",
-  "description": "泰国民宿管理平台 - 包含前端展示、管理后台和后端API",
+  "description": "泰国民宿管理平台 - 自有业务模式，包含民宿、租车(可配司机)、订餐、票务",
+  "business_model": {
+    "type": "self_owned",
+    "services": ["homestay", "car_rental", "meal", "ticket"],
+    "vs_airbnb": "所有业务自有，非商家入驻模式"
+  },
   "tech_stack": {
     "frontend": "React + TypeScript + Vite",
     "backend": "Node.js + Express + Prisma",
     "database": "PostgreSQL (Supabase)",
-    "styling": "Tailwind CSS + shadcn/ui",
-    "deployment": "Netlify (前端) + Render (后端)"
+    "styling": "Tailwind CSS + shadcn/ui"
   },
   "features": [
     {
       "id": "F001",
       "category": "bugfix",
-      "priority": "high",
+      "priority": "P0",
+      "title": "首页 API 错误修复",
       "description": "验证并修复首页 API Error 500 问题",
-      "steps": [
-        "访问 https://tml-villa.netlify.app",
-        "等待页面完全加载",
-        "检查控制台是否有错误",
-        "验证民宿列表和分类正常显示"
-      ],
-      "acceptance_criteria": [
-        "首页加载无 API Error 500",
-        "民宿列表正常显示",
-        "分类筛选正常工作",
-        "Edge Functions 正常响应"
-      ],
+      "status": "done",
       "passes": true,
-      "notes": "2026-02-20 测试通过：首页、民宿列表、详情页均正常。正确网址是 tmlvilla.netlify.app（无连字符）。有少量404错误（图片资源）但不影响功能。"
+      "notes": "2026-02-20 完成：Edge Functions 生效"
     },
     {
       "id": "F002",
       "category": "deployment",
-      "priority": "high",
+      "priority": "P0",
+      "title": "Netlify 部署验证",
       "description": "确认 Netlify 自动部署最新代码",
-      "steps": [
-        "检查 Netlify Dashboard 部署状态",
-        "验证最新 commit eae6340 已部署",
-        "对比线上代码和本地代码"
-      ],
-      "acceptance_criteria": [
-        "Netlify 显示最新部署成功",
-        "部署时间在 commit eae6340 之后",
-        "线上功能与本地一致"
-      ],
+      "status": "done",
       "passes": true,
-      "notes": "2026-02-20 确认：网站 tmlvilla.netlify.app 正常运行，功能与本地一致。"
+      "notes": "2026-02-20 完成"
     },
     {
       "id": "F003",
       "category": "performance",
-      "priority": "high",
-      "description": "首页加载性能优化",
-      "steps": [
-        "使用 Lighthouse 测试首页性能",
-        "分析加载瓶颈",
-        "优化图片、代码分割等"
-      ],
-      "acceptance_criteria": [
-        "首页 LCP < 2.5s",
-        "FID < 100ms",
-        "CLS < 0.1"
-      ],
+      "priority": "P0",
+      "title": "首页加载性能优化",
+      "description": "Edge Functions 绕过 Render 冷启动",
+      "status": "done",
       "passes": true,
-      "notes": "2026-02-20 完成：在 netlify.toml 添加环境变量，Edge Functions 生效。API 响应从 6秒降到 1.2秒。"
+      "notes": "API 响应从 6s 降到 1.2s"
     },
     {
       "id": "F004",
-      "category": "feature",
-      "priority": "medium",
-      "description": "添加 React 错误边界组件",
-      "steps": [
-        "创建 ErrorBoundary 组件",
-        "包裹主要页面组件",
-        "添加友好的错误提示UI"
-      ],
-      "acceptance_criteria": [
-        "组件错误不会导致白屏",
-        "显示友好的错误信息",
-        "提供重试按钮"
-      ],
+      "category": "auth",
+      "priority": "P0",
+      "title": "用户注册/登录系统",
+      "description": "实现用户注册、登录、登出功能",
+      "steps": ["用户邮箱注册", "邮箱验证", "登录/登出", "密码找回"],
+      "acceptance_criteria": ["用户可注册账号", "可登录登出", "Token 管理"],
+      "status": "missing",
       "passes": false,
-      "notes": "之前白屏问题已修复，但需要错误边界防止未来问题"
+      "notes": "目前只有管理员登录，缺少用户端登录"
     },
     {
       "id": "F005",
-      "category": "feature",
-      "priority": "medium",
-      "description": "门票预订功能完善",
-      "steps": [
-        "测试门票预订流程",
-        "验证订单创建",
-        "检查管理后台订单显示"
-      ],
-      "acceptance_criteria": [
-        "用户可以选择门票并预订",
-        "订单正确保存到数据库",
-        "管理后台可以查看订单"
-      ],
+      "category": "booking",
+      "priority": "P0",
+      "title": "民宿预订流程完整性",
+      "description": "完成民宿预订的完整流程",
+      "steps": ["选择日期", "选择人数", "确认订单", "支付", "确认"],
+      "acceptance_criteria": ["日期选择校验库存", "生成订单", "订单状态流转"],
+      "status": "partial",
       "passes": false,
-      "notes": "页面已存在 TicketBooking.tsx 和 TicketOrders.tsx"
+      "notes": "有详情页和日历，但预订流程不完整"
     },
     {
       "id": "F006",
-      "category": "feature",
-      "priority": "medium",
-      "description": "餐饮订单功能完善",
-      "steps": [
-        "测试餐饮订单流程",
-        "验证订单创建",
-        "检查管理后台订单显示"
-      ],
-      "acceptance_criteria": [
-        "用户可以选择餐饮并下单",
-        "订单正确保存到数据库",
-        "管理后台可以查看订单"
-      ],
+      "category": "payment",
+      "priority": "P0",
+      "title": "支付集成",
+      "description": "集成支付功能（支付宝/微信/Stripe/泰国本地支付）",
+      "steps": ["选择支付方式", "跳转支付", "支付回调", "订单状态更新"],
+      "acceptance_criteria": ["支持多种支付方式", "支付成功后订单确认"],
+      "status": "missing",
       "passes": false,
-      "notes": "页面已存在 MealOrder.tsx 和 MealOrders.tsx"
+      "notes": "目前无支付功能"
     },
     {
       "id": "F007",
-      "category": "feature",
-      "priority": "medium",
-      "description": "平台同步功能完善",
-      "steps": [
-        "检查平台同步API",
-        "测试同步功能",
-        "验证配置管理"
-      ],
-      "acceptance_criteria": [
-        "可以配置平台映射",
-        "同步状态正确显示",
-        "错误处理完善"
-      ],
+      "category": "inventory",
+      "priority": "P0",
+      "title": "民宿库存管理",
+      "description": "管理民宿房间可用性",
+      "steps": ["设置房间数量", "日期库存管理", "预订扣减库存", "取消释放库存"],
+      "acceptance_criteria": ["日历视图显示可用性", "预订时校验库存", "超售保护"],
+      "status": "missing",
       "passes": false,
-      "notes": "相关文件：platformSyncApi.ts, PlatformMappingManager"
+      "notes": "数据库有 HouseStock 模型但功能未实现"
     },
     {
       "id": "F008",
-      "category": "maintenance",
-      "priority": "low",
-      "description": "清理未使用的代码和导入",
-      "steps": [
-        "运行 ESLint 检查未使用变量",
-        "删除未使用的导入",
-        "删除未使用的文件"
-      ],
-      "acceptance_criteria": [
-        "无 ESLint 警告",
-        "代码整洁",
-        "构建无警告"
-      ],
+      "category": "inventory",
+      "priority": "P0",
+      "title": "车辆库存管理",
+      "description": "管理车辆可用性，支持配司机选项",
+      "steps": ["设置车辆数量", "司机配置", "日期库存管理", "预订校验"],
+      "acceptance_criteria": ["车辆日历视图", "可配司机选项", "司机排班"],
+      "status": "missing",
       "passes": false,
-      "notes": "tsconfig 已关闭 noUnusedLocals，后续可重新开启"
+      "notes": "CarConfig 存在，但缺少库存和司机管理"
     },
     {
       "id": "F009",
-      "category": "testing",
-      "priority": "low",
-      "description": "添加单元测试",
-      "steps": [
-        "配置测试框架",
-        "编写核心功能测试",
-        "集成到 CI/CD"
-      ],
-      "acceptance_criteria": [
-        "测试覆盖率 > 50%",
-        "关键功能有测试",
-        "CI 中自动运行测试"
-      ],
+      "category": "user",
+      "priority": "P1",
+      "title": "用户中心",
+      "description": "用户个人中心页面",
+      "steps": ["个人信息管理", "我的订单", "收藏列表", "消息通知"],
+      "acceptance_criteria": ["查看/编辑个人信息", "订单历史", "收藏管理"],
+      "status": "missing",
       "passes": false,
-      "notes": "可考虑使用 Vitest + Testing Library"
+      "notes": "无用户中心页面"
     },
     {
       "id": "F010",
-      "category": "documentation",
-      "priority": "low",
-      "description": "完善项目文档",
-      "steps": [
-        "更新 README.md",
-        "补充 API 文档",
-        "添加开发指南"
-      ],
-      "acceptance_criteria": [
-        "README 包含项目介绍和快速开始",
-        "API 有基本文档",
-        "新开发者可以快速上手"
-      ],
+      "category": "review",
+      "priority": "P1",
+      "title": "评价系统",
+      "description": "用户对民宿/服务进行评价",
+      "steps": ["订单完成后评价", "评分+评论", "显示在详情页"],
+      "acceptance_criteria": ["用户可提交评价", "评价显示在列表/详情", "评分统计"],
+      "status": "missing",
       "passes": false,
-      "notes": "已有 TechSpec.md 和 HANDOVER.md"
+      "notes": "Homestay 有 rating/reviews 字段但无评价功能"
+    },
+    {
+      "id": "F011",
+      "category": "notification",
+      "priority": "P1",
+      "title": "消息通知系统",
+      "description": "订单状态变更通知",
+      "steps": ["订单确认通知", "支付成功通知", "入住提醒", "评价提醒"],
+      "acceptance_criteria": ["站内消息", "邮件通知", "通知列表"],
+      "status": "missing",
+      "passes": false,
+      "notes": "无通知功能"
+    },
+    {
+      "id": "F012",
+      "category": "staff",
+      "priority": "P1",
+      "title": "员工管理",
+      "description": "管理司机、清洁、前台等员工",
+      "steps": ["员工信息管理", "角色权限", "排班管理", "绩效统计"],
+      "acceptance_criteria": ["员工 CRUD", "角色分配", "排班日历"],
+      "status": "missing",
+      "passes": false,
+      "notes": "自有业务需要管理员工"
+    },
+    {
+      "id": "F013",
+      "category": "finance",
+      "priority": "P1",
+      "title": "成本核算",
+      "description": "自有业务成本管理",
+      "steps": ["资产成本录入", "维护费用", "人力成本", "利润计算"],
+      "acceptance_criteria": ["成本录入", "收支统计", "利润报表"],
+      "status": "partial",
+      "passes": false,
+      "notes": "有 Transaction 模型，但成本核算功能不完整"
+    },
+    {
+      "id": "F014",
+      "category": "report",
+      "priority": "P1",
+      "title": "运营报表",
+      "description": "收入/订单/用户数据报表",
+      "steps": ["收入统计", "订单统计", "入住率", "图表展示"],
+      "acceptance_criteria": ["日报/周报/月报", "数据可视化", "导出功能"],
+      "status": "partial",
+      "passes": false,
+      "notes": "Dashboard 有基础展示，报表功能不完整"
+    },
+    {
+      "id": "F015",
+      "category": "calendar",
+      "priority": "P1",
+      "title": "日历视图",
+      "description": "管理端日历视图查看房间/车辆可用性",
+      "steps": ["月历视图", "点击查看详情", "快速预订", "状态标识"],
+      "acceptance_criteria": ["日历显示库存状态", "可快速操作", "颜色标识"],
+      "status": "missing",
+      "passes": false,
+      "notes": "管理端缺少日历视图"
+    },
+    {
+      "id": "F016",
+      "category": "search",
+      "priority": "P2",
+      "title": "搜索优化",
+      "description": "高级搜索和筛选功能",
+      "steps": ["关键词搜索", "多条件筛选", "排序选项", "地图模式"],
+      "acceptance_criteria": ["搜索结果准确", "筛选条件生效", "支持排序"],
+      "status": "partial",
+      "passes": false,
+      "notes": "有基础筛选，缺少高级搜索"
+    },
+    {
+      "id": "F017",
+      "category": "favorite",
+      "priority": "P2",
+      "title": "收藏功能",
+      "description": "用户收藏民宿",
+      "steps": ["点击收藏", "收藏列表", "取消收藏"],
+      "acceptance_criteria": ["收藏状态同步", "收藏列表展示"],
+      "status": "partial",
+      "passes": false,
+      "notes": "Homestay 有 isFavorite 字段但功能不完整"
+    },
+    {
+      "id": "F018",
+      "category": "i18n",
+      "priority": "P2",
+      "title": "多语言完善",
+      "description": "完善中/英/泰三语支持",
+      "steps": ["翻译文件完善", "语言切换", "语言持久化"],
+      "acceptance_criteria": ["三种语言切换", "翻译完整", "默认语言设置"],
+      "status": "partial",
+      "passes": false,
+      "notes": "有 i18n 框架但翻译不完整"
+    },
+    {
+      "id": "F019",
+      "category": "mobile",
+      "priority": "P2",
+      "title": "移动端适配",
+      "description": "优化移动端体验",
+      "steps": ["响应式布局检查", "触摸交互优化", "移动端导航"],
+      "acceptance_criteria": ["移动端可用", "触摸友好", "性能优化"],
+      "status": "partial",
+      "passes": false,
+      "notes": "有响应式但需优化"
+    },
+    {
+      "id": "F020",
+      "category": "tech",
+      "priority": "P2",
+      "title": "错误边界组件",
+      "description": "添加 React 错误边界防止白屏",
+      "steps": ["创建 ErrorBoundary", "包裹主要组件", "友好错误提示"],
+      "acceptance_criteria": ["错误不白屏", "可重试", "错误日志"],
+      "status": "missing",
+      "passes": false,
+      "notes": "之前有白屏问题"
+    },
+    {
+      "id": "F021",
+      "category": "marketing",
+      "priority": "P2",
+      "title": "营销工具",
+      "description": "优惠券、促销活动",
+      "steps": ["创建优惠券", "活动配置", "用户领取使用"],
+      "acceptance_criteria": ["优惠券管理", "订单使用优惠", "活动展示"],
+      "status": "missing",
+      "passes": false,
+      "notes": "无营销功能"
+    },
+    {
+      "id": "F022",
+      "category": "merchant",
+      "priority": "P3",
+      "title": "商家入驻（未来）",
+      "description": "支持第三方商家入驻平台",
+      "steps": ["商家注册", "商品管理", "订单分成", "结算"],
+      "acceptance_criteria": ["商家后台", "商品审核", "结算功能"],
+      "status": "planned",
+      "passes": false,
+      "notes": "未来规划，架构需预留"
+    },
+    {
+      "id": "F023",
+      "category": "membership",
+      "priority": "P3",
+      "title": "会员系统（未来）",
+      "description": "积分、会员等级",
+      "steps": ["会员等级", "积分获取/消费", "会员权益"],
+      "acceptance_criteria": ["等级体系", "积分系统", "权益展示"],
+      "status": "planned",
+      "passes": false,
+      "notes": "未来规划"
+    },
+    {
+      "id": "F024",
+      "category": "distribution",
+      "priority": "P3",
+      "title": "分销系统（未来）",
+      "description": "代理商分销",
+      "steps": ["代理商管理", "分销链接", "佣金结算"],
+      "acceptance_criteria": ["代理商后台", "佣金计算", "结算功能"],
+      "status": "planned",
+      "passes": false,
+      "notes": "未来规划"
+    },
+    {
+      "id": "F025",
+      "category": "testing",
+      "priority": "P2",
+      "title": "单元测试",
+      "description": "添加核心功能测试",
+      "steps": ["配置测试框架", "编写核心测试", "CI 集成"],
+      "acceptance_criteria": ["测试覆盖 > 50%", "CI 自动运行"],
+      "status": "missing",
+      "passes": false,
+      "notes": "无测试"
     }
   ],
   "metadata": {
     "created_at": "2026-02-20T00:00:00Z",
-    "updated_at": "2026-02-20T04:22:00Z",
-    "total_features": 10,
-    "completed_features": 3,
-    "current_phase": "development",
-    "notes": "F001-F003 已完成。Edge Functions 正常工作，API 响应 ~1.2s。"
+    "updated_at": "2026-02-20T04:30:00Z",
+    "total_features": 25,
+    "done_features": 3,
+    "missing_features": 14,
+    "partial_features": 5,
+    "planned_features": 3,
+    "priority_breakdown": {
+      "P0": 8,
+      "P1": 7,
+      "P2": 6,
+      "P3": 3
+    },
+    "next_feature": "F004 - 用户注册/登录系统"
   }
 }
