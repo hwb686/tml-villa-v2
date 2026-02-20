@@ -104,20 +104,28 @@ pending ──► confirmed ──► completed
 
 | 指标 | 数量 |
 |------|------|
-| 功能总数 | 25 |
+| 功能总数 | 26 |
 | 已完成 | 3 |
 | 缺失 | 14 |
-| 部分实现 | 5 |
+| 部分实现 | 6 |
 | 未来规划 | 3 |
 
 ### 2.2 优先级分布
 
 ```
-P0 (核心缺失)  ████████████████████  8 个
-P1 (重要功能)  █████████████████     7 个
-P2 (增强功能)  ████████████          6 个
-P3 (未来规划)  ██████                3 个
+P0 (核心缺失)  ████████████████████████  7 个
+P1 (重要功能)  █████████████████████     7 个
+P2 (增强功能)  ████████████████          6 个
+P3 (未来规划)  ████████████              6 个
 ```
+
+### 2.3 高风险功能（受免费额度限制）
+
+| 功能 | 风险 | 优化方案 |
+|------|------|----------|
+| F007 民宿库存 | 🔴 高 | 只存90天，过期删除 |
+| F008 车辆库存 | 🔴 高 | 只存30天排班 |
+| F011 消息通知 | 🔴 高 | 通知保留30天 |
 
 ---
 
@@ -134,22 +142,23 @@ P3 (未来规划)  ██████                3 个
 - 密码找回
 - Token 管理（JWT）
 
+**免费限制影响：** 无，JWT 无状态
+
 **数据模型：**
 ```prisma
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  password     String   // 加密存储
-  name         String?
-  phone        String?
-  avatar       String?
-  status       String   @default("active")  // active, inactive, banned
-  emailVerified Boolean @default(false)
+  password     String   // bcrypt hash
+  name         String?  @db.VarChar(50)
+  phone        String?  @db.VarChar(20)
+  role         String   @default("USER") // USER, ADMIN
+  status       String   @default("active")
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
   orders       Order[]
-  reviews      Review[]
   favorites    Favorite[]
+  
+  @@map("users")
 }
 ```
 
@@ -158,7 +167,6 @@ model User {
 POST /api/auth/register    - 用户注册
 POST /api/auth/login       - 用户登录
 POST /api/auth/logout      - 用户登出
-POST /api/auth/verify      - 邮箱验证
 POST /api/auth/forgot      - 忘记密码
 POST /api/auth/reset       - 重置密码
 GET  /api/auth/me          - 获取当前用户
@@ -166,48 +174,59 @@ GET  /api/auth/me          - 获取当前用户
 
 ---
 
-### F005 - 民宿预订流程完整性
+### F005 - 民宿预订流程
 
 **现状：** 有详情页和日历组件，但预订流程不完整
 
-**完整流程：**
+**无支付流程：**
 ```
-1. 选择日期 → 2. 选择人数 → 3. 填写信息 → 4. 确认订单 → 5. 支付 → 6. 订单确认
+1. 选择日期 → 2. 选择人数 → 3. 确认订单 → 4. 等待确认/自动确认
 ```
+
+**确认模式（由 F026 配置决定）：**
+- 人工确认：用户提交 → 管理员确认/拒绝
+- 即时确认：用户提交 → 自动确认
 
 **需要实现：**
 - 日期选择时校验库存
 - 订单预览页面
-- 订单确认逻辑
-- 订单状态流转（pending → paid → confirmed → completed/cancelled）
+- 订单提交逻辑
+- 订单状态流转（pending → confirmed → completed/cancelled）
 
-**订单状态流转：**
+**订单状态流转（无支付模式）：**
 ```
                     ┌──────────────┐
-                    │   pending    │ (待支付)
+                    │   pending    │ (待确认)
                     └──────┬───────┘
-                           │ 支付成功
+                           │
+         ┌─────────────────┼─────────────────┐
+         │                 │                 │
+         ▼                 ▼                 ▼
+   即时确认模式        人工确认模式         取消
+   (餐饮/票务)        (民宿/租车)
+         │                 │                 │
+         │                 ▼                 │
+         │          ┌──────────────┐        │
+         └─────────►│  confirmed   │◄───────┘
+                    │  (已确认)    │
+                    └──────┬───────┘
+                           │ 服务完成
                            ▼
                     ┌──────────────┐
-                    │    paid      │ (已支付)
-                    └──────┬───────┘
-                           │ 商家确认
-                           ▼
-                    ┌──────────────┐
-           ┌───────│  confirmed   │ (已确认)───────┐
-           │       └──────────────┘               │
-           │ 取消                                │ 完成
-           ▼                                      ▼
-    ┌──────────────┐                      ┌──────────────┐
-    │  cancelled   │                      │  completed   │
-    └──────────────┘                      └──────────────┘
+                    │  completed   │
+                    └──────────────┘
 ```
+
+**确认模式说明：**
+- 由 F026 业务配置系统控制
+- 每种业务可独立设置"人工确认"或"即时确认"
+- 默认：民宿/租车需人工确认，餐饮/票务即时确认
 
 ---
 
-### F006 - 支付集成
+### F006 - 支付集成（P3 未来规划）
 
-**现状：** 无支付功能
+**现状：** 暂不实现，后续迭代
 
 **推荐方案：**
 
@@ -216,11 +235,10 @@ GET  /api/auth/me          - 获取当前用户
 | Stripe | 国际用户、信用卡 | 中 |
 | Omise/Opn Payments | 泰国本地支付 | 中 |
 | 支付宝/微信 | 中国游客 | 高（需企业资质） |
-| 银行转账 | 备用方案 | 低 |
 
 **建议：** 优先集成 Stripe（支持泰国）
 
-**API 设计：**
+**API 设计预留：**
 ```
 POST /api/payments/create-intent  - 创建支付意图
 POST /api/payments/confirm        - 确认支付
@@ -311,6 +329,64 @@ model DriverSchedule {
   date      DateTime @db.Date
   carId     String?  // 分配的车辆
   status    String   // available, assigned, off
+}
+```
+
+---
+
+### F026 - 业务配置系统 🔧
+
+**核心功能：** 统一管理各业务线的配置开关
+
+**默认配置项：**
+
+| 配置键 | 默认值 | 说明 |
+|--------|--------|------|
+| `homestay.manual_confirm` | `true` | 民宿订单需人工确认 |
+| `car.manual_confirm` | `true` | 租车订单需人工确认 |
+| `meal.manual_confirm` | `false` | 餐饮订单即时确认 |
+| `ticket.manual_confirm` | `false` | 票务订单即时确认 |
+
+**数据模型：**
+```prisma
+model BusinessConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   // "true" | "false" | 其他值
+  description String?
+  updatedAt   DateTime @updatedAt
+  
+  @@map("business_configs")
+}
+```
+
+**API 设计：**
+```
+GET  /api/config                    - 获取所有配置
+GET  /api/config/:key               - 获取单个配置
+PUT  /api/config/:key               - 更新配置
+```
+
+**管理后台界面：**
+```
+┌─────────────────────────────────────────────────────────┐
+│  业务配置                                               │
+├─────────────────────────────────────────────────────────┤
+│  民宿订单确认模式    [需人工确认 ▼]                      │
+│  租车订单确认模式    [需人工确认 ▼]                      │
+│  餐饮订单确认模式    [即时确认 ▼]                        │
+│  票务订单确认模式    [即时确认 ▼]                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+**使用场景：**
+```typescript
+// 订单创建时检查确认模式
+const config = await getConfig('homestay.manual_confirm');
+if (config.value === 'true') {
+  order.status = 'pending'; // 等待人工确认
+} else {
+  order.status = 'confirmed'; // 即时确认
 }
 ```
 
@@ -521,64 +597,132 @@ model Cost {
 ## 8. 开发优先级建议
 
 ### 第一阶段（P0 - 核心功能）
-1. F004 用户注册/登录
-2. F007 民宿库存管理
-3. F005 民宿预订流程
-4. F006 支付集成
+1. F026 业务配置系统 ← 基础设施
+2. F004 用户注册/登录
+3. F007 民宿库存管理
+4. F005 民宿预订流程
 5. F008 车辆库存管理
+6. F016 免费额度监控
 
 ### 第二阶段（P1 - 重要功能）
-6. F009 用户中心
-7. F015 日历视图
-8. F012 员工管理
-9. F013 成本核算
-10. F014 运营报表
-11. F010 评价系统
-12. F011 消息通知
+7. F009 用户中心
+8. F015 日历视图
+9. F012 员工管理
+10. F013 成本核算
+11. F014 运营报表
+12. F010 评价系统
+13. F011 消息通知
 
 ### 第三阶段（P2 - 增强功能）
-13. F016 搜索优化
-14. F017 收藏功能
-15. F018 多语言完善
-16. F019 移动端适配
-17. F020 错误边界
-18. F021 营销工具
+14. F017 搜索优化
+15. F018 收藏功能
+16. F019 多语言完善
+17. F020 移动端适配
+18. F021 错误边界
+19. F022 营销工具
+20. F025 单元测试
 
 ### 第四阶段（P3 - 未来规划）
-19. F022 商家入驻
-20. F023 会员系统
-21. F024 分销系统
+21. F006 支付集成
+22. F023 商家入驻
+23. F024 会员系统
+24. F??? 分销系统
 
 ---
 
-## 9. 数据库迁移计划
+## 9. 免费额度监控方案
 
-需要新增的表：
-- `reviews` - 评价
-- `favorites` - 收藏
-- `notifications` - 通知
-- `staff` - 员工
-- `staff_schedules` - 员工排班
-- `drivers` - 司机
-- `driver_schedules` - 司机排班
-- `costs` - 成本记录
-- `coupons` - 优惠券
-- `user_coupons` - 用户优惠券
+### 9.1 监控指标
 
-需要修改的表：
-- `users` - 添加 emailVerified 等字段
-- `car_configs` - 添加 withDriver, driverPrice 字段
-- `car_rentals` - 添加 driverId 字段
+| 平台 | 监控项 | 预警阈值 | 告警阈值 |
+|------|--------|----------|----------|
+| Supabase | 数据库大小 | 400MB (80%) | 450MB (90%) |
+| Supabase | 带宽使用 | 4GB (80%) | 4.5GB (90%) |
+| Supabase | 存储空间 | 1.6GB (80%) | 1.8GB (90%) |
+| Netlify | 带宽使用 | 80GB (80%) | 90GB (90%) |
+| Render | 内存使用 | 400MB (80%) | 450MB (90%) |
+
+### 9.2 实现方案
+
+```typescript
+// 后台定时任务：每小时检查一次
+async function checkFreeLimits() {
+  const limits = {
+    database: await getDatabaseSize(),
+    bandwidth: await getBandwidthUsage(),
+    storage: await getStorageUsage(),
+  };
+  
+  for (const [key, value] of Object.entries(limits)) {
+    if (value > FREE_LIMITS[key] * 0.9) {
+      await sendAlert(`⚠️ ${key} 已达 90% 免费额度上限`);
+    }
+  }
+}
+```
+
+### 9.3 Dashboard 显示
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  资源使用情况                                           │
+├─────────────────────────────────────────────────────────┤
+│  数据库    [████████████░░░░░░░░] 320MB / 500MB (64%)   │
+│  带宽      [████████░░░░░░░░░░░░] 2.1GB / 5GB (42%)     │
+│  存储      [███████████░░░░░░░░░] 1.1GB / 2GB (55%)     │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 10. 文档更新记录
+## 10. 数据库迁移计划
+
+### 10.1 需要新增的表
+
+| 表名 | 用途 | 预估大小 |
+|------|------|----------|
+| `business_configs` | 业务配置 | < 1KB |
+| `favorites` | 用户收藏 | < 100KB |
+| `reviews` | 评价 | < 5MB |
+| `notifications` | 通知（30天清理） | < 2MB |
+| `staff` | 员工 | < 50KB |
+| `staff_schedules` | 员工排班 | < 500KB |
+| `drivers` | 司机 | < 10KB |
+| `driver_schedules` | 司机排班（30天） | < 200KB |
+| `costs` | 成本记录 | < 1MB |
+
+### 10.2 需要修改的表
+
+| 表名 | 修改内容 |
+|------|----------|
+| `users` | 精简字段，移除未使用的 |
+| `car_configs` | 添加 `withDriver`, `driverPrice` |
+| `car_rentals` | 添加 `driverId` |
+| `homestays` | 添加字段长度限制 |
+
+### 10.3 存储优化策略
+
+```sql
+-- 定期清理过期库存（每天执行）
+DELETE FROM house_stocks WHERE date < CURRENT_DATE - 90;
+
+-- 定期清理过期排班（每天执行）
+DELETE FROM driver_schedules WHERE date < CURRENT_DATE - 30;
+
+-- 定期清理通知（每天执行）
+DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '30 days';
+```
+
+---
+
+## 11. 文档更新记录
 
 | 日期 | 版本 | 更新内容 |
 |------|------|----------|
-| 2026-02-20 | 1.0 | 初始版本，功能规划完成 |
+| 2026-02-20 | 1.0 | 初始版本 |
+| 2026-02-20 | 2.0 | ULTRATHINK 分析：免费部署约束、无支付模式、业务配置系统 |
 
 ---
 
 *文档创建：2026-02-20*
-*最后更新：2026-02-20*
+*最后更新：2026-02-20 (ULTRATHINK 分析完成)*
