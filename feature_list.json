@@ -89,9 +89,9 @@
       "free_limit_impact": "无影响",
       "steps": ["选择日期", "选择人数", "提交预订", "后台确认/拒绝"],
       "acceptance_criteria": ["日期校验库存", "生成订单", "管理员可确认/拒绝"],
-      "status": "partial",
-      "passes": false,
-      "notes": "有详情页，缺预订提交和确认流程"
+      "status": "done",
+      "passes": true,
+      "notes": "API已完成: POST /api/bookings, GET /api/bookings/:id, PUT /api/bookings/:id/confirm, PUT /api/bookings/:id/cancel。支持未登录用户预订，自动创建guest账户。集成业务配置系统决定确认模式。"
     },
     {
       "id": "F006",
@@ -367,19 +367,19 @@
   },
   "metadata": {
     "created_at": "2026-02-20T00:00:00Z",
-    "updated_at": "2026-02-20T05:35:00Z",
+    "updated_at": "2026-02-20T07:25:00Z",
     "total_features": 26,
-    "done_features": 3,
-    "missing_features": 14,
-    "partial_features": 6,
+    "done_features": 6,
+    "missing_features": 13,
+    "partial_features": 5,
     "planned_features": 3,
     "priority_breakdown": {
-      "P0": 7,
+      "P0": 5,
       "P1": 7,
       "P2": 6,
       "P3": 6
     },
     "high_risk_features": ["F007", "F008", "F011"],
-    "next_feature": "F004 - 用户注册/登录系统"
+    "next_feature": "F007 - 民宿库存管理"
   }
 }

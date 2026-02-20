@@ -1575,6 +1575,420 @@ app.delete('/api/config/:key', verifyAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// Booking APIs (民宿预订)
+// ============================================
+
+// 辅助函数：生成订单号
+const generateOrderId = () => {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `BK${date}${random}`;
+};
+
+// 辅助函数：获取日期范围内的所有日期
+const getDatesInRange = (startDate, endDate) => {
+  const dates = [];
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // 不包含退房日期
+  while (current < end) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+};
+
+// POST /api/bookings - 创建预订
+app.post('/api/bookings', async (req, res) => {
+  try {
+    const { homestayId, checkIn, checkOut, guests, remark, userId, guestName, guestPhone, guestEmail } = req.body;
+    
+    // 验证必填字段
+    if (!homestayId || !checkIn || !checkOut) {
+      return res.status(400).json({ code: 400, msg: '请提供民宿ID、入住日期和退房日期' });
+    }
+    
+    // 验证日期
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (checkInDate < today) {
+      return res.status(400).json({ code: 400, msg: '入住日期不能早于今天' });
+    }
+    
+    if (checkOutDate <= checkInDate) {
+      return res.status(400).json({ code: 400, msg: '退房日期必须晚于入住日期' });
+    }
+    
+    // 获取民宿信息
+    const homestay = await prisma.homestay.findUnique({
+      where: { id: homestayId },
+    });
+    
+    if (!homestay) {
+      return res.status(404).json({ code: 404, msg: '民宿不存在' });
+    }
+    
+    // 计算入住天数和总价
+    const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+    const totalPrice = homestay.price * nights;
+    
+    // 获取日期范围内的所有日期
+    const dates = getDatesInRange(checkInDate, checkOutDate);
+    
+    // 确定用户ID：如果是登录用户，使用其ID；否则查找或创建guest用户
+    let orderUserId = userId;
+    
+    if (!orderUserId) {
+      // 为未登录用户创建或查找临时用户
+      if (guestEmail) {
+        // 尝试查找已存在的guest用户
+        let guestUser = await prisma.user.findUnique({
+          where: { email: guestEmail },
+        });
+        
+        if (!guestUser) {
+          // 创建新的guest用户
+          guestUser = await prisma.user.create({
+            data: {
+              username: guestName || guestEmail.split('@')[0],
+              email: guestEmail,
+              phone: guestPhone || null,
+              password: await hashPassword(Math.random().toString(36)), // 随机密码
+              role: 'GUEST',
+              status: 'active',
+            },
+          });
+        }
+        orderUserId = guestUser.id;
+      } else {
+        return res.status(400).json({ code: 400, msg: '请提供邮箱地址' });
+      }
+    }
+    
+    // 使用事务处理预订和库存
+    const result = await prisma.$transaction(async (tx) => {
+      // 检查并锁定库存
+      for (const date of dates) {
+        const stock = await tx.houseStock.findUnique({
+          where: { houseId_date: { houseId: homestayId, date } },
+        });
+        
+        if (!stock || stock.stockCount < 1) {
+          throw new Error(`日期 ${date.toISOString().split('T')[0]} 无可用房源`);
+        }
+      }
+      
+      // 扣减库存
+      for (const date of dates) {
+        await tx.houseStock.update({
+          where: { houseId_date: { houseId: homestayId, date } },
+          data: { stockCount: { decrement: 1 } },
+        });
+      }
+      
+      // 获取业务配置，决定订单状态
+      const config = await tx.businessConfig.findUnique({
+        where: { key: 'homestay.manual_confirm' },
+      });
+      
+      // 默认需要人工确认
+      const needManualConfirm = config?.value !== 'false';
+      const status = needManualConfirm ? 'pending' : 'confirmed';
+      
+      // 创建订单
+      const order = await tx.order.create({
+        data: {
+          orderId: generateOrderId(),
+          userId: orderUserId,
+          houseId: homestayId,
+          type: 'homestay',
+          itemName: homestay.title,
+          totalPrice,
+          status,
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
+          guests: guests || 1,
+        },
+      });
+      
+      return { order, needManualConfirm };
+    });
+    
+    // 清除缓存
+    cache.del('homestays:all');
+    
+    res.json({
+      code: 200,
+      msg: '预订成功',
+      data: {
+        orderId: result.order.orderId,
+        status: result.order.status,
+        needManualConfirm: result.needManualConfirm,
+        totalPrice: result.order.totalPrice,
+        checkIn: result.order.checkIn.toISOString().split('T')[0],
+        checkOut: result.order.checkOut.toISOString().split('T')[0],
+        nights,
+        message: result.needManualConfirm 
+          ? '预订已提交，等待管理员确认' 
+          : '预订已确认',
+      },
+    });
+  } catch (err) {
+    console.error('Error creating booking:', err);
+    if (err.message.includes('无可用房源')) {
+      return res.status(400).json({ code: 400, msg: err.message });
+    }
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/bookings/my - 获取当前用户的订单
+app.get('/api/bookings/my', authMiddleware, async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      where: { userId: req.user.id },
+      include: { house: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const formatted = orders.map(o => ({
+      id: o.orderId,
+      homestayId: o.houseId,
+      homestay: o.house ? {
+        id: o.house.id,
+        title: o.house.title,
+        location: o.house.location,
+        images: o.house.images,
+        price: o.house.price,
+      } : null,
+      checkIn: o.checkIn ? o.checkIn.toISOString().split('T')[0] : null,
+      checkOut: o.checkOut ? o.checkOut.toISOString().split('T')[0] : null,
+      guests: o.guests,
+      totalPrice: o.totalPrice,
+      status: o.status,
+      createdAt: o.createdAt.toISOString(),
+    }));
+    
+    res.json({ code: 200, data: formatted });
+  } catch (err) {
+    console.error('Error fetching my bookings:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/bookings/:id - 获取订单详情
+app.get('/api/bookings/:id', async (req, res) => {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { orderId: req.params.id },
+      include: { house: true, user: true },
+    });
+    
+    if (!order) {
+      return res.status(404).json({ code: 404, msg: '订单不存在' });
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        id: order.orderId,
+        homestayId: order.houseId,
+        homestay: order.house ? {
+          id: order.house.id,
+          title: order.house.title,
+          location: order.house.location,
+          images: order.house.images,
+          price: order.house.price,
+          guests: order.house.guests,
+          bedrooms: order.house.bedrooms,
+        } : null,
+        userId: order.userId,
+        user: order.user ? {
+          id: order.user.id,
+          username: order.user.username,
+          email: order.user.email,
+          phone: order.user.phone,
+        } : null,
+        checkIn: order.checkIn ? order.checkIn.toISOString().split('T')[0] : null,
+        checkOut: order.checkOut ? order.checkOut.toISOString().split('T')[0] : null,
+        guests: order.guests,
+        totalPrice: order.totalPrice,
+        status: order.status,
+        createdAt: order.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching booking:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/bookings/:id/confirm - 确认订单（管理员）
+app.put('/api/bookings/:id/confirm', verifyAdmin, async (req, res) => {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { orderId: req.params.id },
+    });
+    
+    if (!order) {
+      return res.status(404).json({ code: 404, msg: '订单不存在' });
+    }
+    
+    if (order.status !== 'pending') {
+      return res.status(400).json({ code: 400, msg: '只能确认待确认状态的订单' });
+    }
+    
+    const updatedOrder = await prisma.order.updateMany({
+      where: { orderId: req.params.id },
+      data: { status: 'confirmed' },
+    });
+    
+    res.json({ 
+      code: 200, 
+      msg: '订单已确认',
+      data: { orderId: req.params.id, status: 'confirmed' } 
+    });
+  } catch (err) {
+    console.error('Error confirming booking:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/bookings/:id/cancel - 取消订单
+app.put('/api/bookings/:id/cancel', async (req, res) => {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { orderId: req.params.id },
+    });
+    
+    if (!order) {
+      return res.status(404).json({ code: 404, msg: '订单不存在' });
+    }
+    
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ code: 400, msg: '订单已取消' });
+    }
+    
+    if (order.status === 'completed') {
+      return res.status(400).json({ code: 400, msg: '已完成的订单不能取消' });
+    }
+    
+    // 使用事务处理取消和释放库存
+    await prisma.$transaction(async (tx) => {
+      // 更新订单状态
+      await tx.order.updateMany({
+        where: { orderId: req.params.id },
+        data: { status: 'cancelled' },
+      });
+      
+      // 释放库存
+      if (order.checkIn && order.checkOut) {
+        const dates = getDatesInRange(order.checkIn, order.checkOut);
+        for (const date of dates) {
+          await tx.houseStock.update({
+            where: { houseId_date: { houseId: order.houseId, date } },
+            data: { stockCount: { increment: 1 } },
+          });
+        }
+      }
+    });
+    
+    // 清除缓存
+    cache.del('homestays:all');
+    
+    res.json({ 
+      code: 200, 
+      msg: '订单已取消',
+      data: { orderId: req.params.id, status: 'cancelled' } 
+    });
+  } catch (err) {
+    console.error('Error cancelling booking:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/homestays/:id/stock - 获取民宿库存信息
+app.get('/api/homestays/:id/stock', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ code: 400, msg: '请提供开始和结束日期' });
+    }
+    
+    const stocks = await prisma.houseStock.findMany({
+      where: {
+        houseId: req.params.id,
+        date: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    const formatted = stocks.map(s => ({
+      date: s.date.toISOString().split('T')[0],
+      stockCount: s.stockCount,
+    }));
+    
+    res.json({ code: 200, data: formatted });
+  } catch (err) {
+    console.error('Error fetching stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/homestays/:id/init-stock - 初始化库存（管理员）
+app.post('/api/homestays/:id/init-stock', verifyAdmin, async (req, res) => {
+  try {
+    const { stockCount, days } = req.body;
+    
+    if (!stockCount || stockCount < 1) {
+      return res.status(400).json({ code: 400, msg: '库存数量必须大于0' });
+    }
+    
+    // 默认初始化未来90天的库存
+    const targetDays = days || 90;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const stocks = [];
+    for (let i = 0; i < targetDays; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      stocks.push({
+        houseId: req.params.id,
+        date,
+        stockCount,
+      });
+    }
+    
+    // 批量创建或更新库存
+    const result = await prisma.houseStock.createMany({
+      data: stocks,
+      skipDuplicates: true,
+    });
+    
+    // 清除缓存
+    cache.del('homestays:all');
+    
+    res.json({ 
+      code: 200, 
+      msg: `成功初始化 ${result.count} 天的库存`,
+      data: { count: result.count }
+    });
+  } catch (err) {
+    console.error('Error initializing stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Auth - Admin Change Password
 app.post('/api/admin/change-password', async (req, res) => {
   try {

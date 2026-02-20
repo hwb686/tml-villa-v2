@@ -318,3 +318,71 @@
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════
+
+## 会话 6 - 2026-02-20
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F005 - 民宿预订流程
+
+### 开始时状态:
+- 已完成功能: 5
+- 当前功能: F005
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 实现 POST /api/bookings - 创建预订API
+  - 校验日期合法性
+  - 批量检查库存
+  - 事务处理库存扣减
+  - 根据业务配置决定订单状态(pending/confirmed)
+  - 支持未登录用户自动创建guest账户
+- [x] 实现 GET /api/bookings/:id - 获取订单详情
+- [x] 实现 GET /api/bookings/my - 获取当前用户订单
+- [x] 实现 PUT /api/bookings/:id/confirm - 确认订单(管理员)
+- [x] 实现 PUT /api/bookings/:id/cancel - 取消订单并释放库存
+- [x] 实现 GET /api/homestays/:id/stock - 获取民宿库存
+- [x] 实现 POST /api/homestays/:id/init-stock - 初始化库存(管理员)
+- [x] 更新前端 HomestayDetail.tsx
+  - 添加预订确认弹窗
+  - 未登录用户填写联系方式
+  - 预订成功/失败结果展示
+  - 显示订单号和状态
+- [x] 更新前端 API 服务 (bookingApi, stockApi)
+
+### API 端点:
+| 端点 | 方法 | 描述 | 权限 |
+|------|------|------|------|
+| /api/bookings | POST | 创建预订 | 公开 |
+| /api/bookings/:id | GET | 获取订单详情 | 公开 |
+| /api/bookings/my | GET | 获取我的订单 | 登录用户 |
+| /api/bookings/:id/confirm | PUT | 确认订单 | 管理员 |
+| /api/bookings/:id/cancel | PUT | 取消订单 | 公开 |
+| /api/homestays/:id/stock | GET | 获取库存 | 公开 |
+| /api/homestays/:id/init-stock | POST | 初始化库存 | 管理员 |
+
+### 测试结果:
+- [x] 创建预订成功
+- [x] 未登录用户自动创建guest账户
+- [x] 获取订单详情成功
+- [x] 管理员确认订单成功
+- [x] 取消订单释放库存成功
+- [x] Playwright 端到端测试通过
+
+### 修改的文件:
+- backend/api/db.js (添加预订相关API)
+- app/src/services/api.ts (添加 bookingApi, stockApi)
+- app/src/pages/HomestayDetail.tsx (实现预订流程)
+- feature_list.json (更新 F005 状态)
+
+### 技术要点:
+- 使用事务处理库存扣减和订单创建
+- 支持未登录用户预订（自动创建guest账户）
+- 集成业务配置系统(F026)决定确认模式
+- 库存使用日期维度存储
+- 取消订单自动释放库存
+
+### 结束时状态:
+- 已完成功能: 6
+- 下一个功能: F007 (民宿库存管理)
+- 备注: 预订流程完整可用，支持即时确认和人工确认两种模式
+
+---

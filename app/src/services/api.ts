@@ -53,10 +53,21 @@ export const homestayApi = {
 };
 
 export const bookingApi = {
-  create: (data: BookingData) => fetchApi<Booking>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
+  create: (data: BookingData) => fetchApi<BookingResult>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
   getMyBookings: () => fetchApi<Booking[]>('/bookings/my'),
-  getById: (id: string) => fetchApi<Booking>(`/bookings/${id}`),
-  cancel: (id: string) => fetchApi<void>(`/bookings/${id}/cancel`, { method: 'POST' }),
+  getById: (id: string) => fetchApi<BookingDetail>(`/bookings/${id}`),
+  cancel: (id: string) => fetchApi<CancelResult>(`/bookings/${id}/cancel`, { method: 'PUT' }),
+  confirm: (id: string) => fetchApi<ConfirmResult>(`/bookings/${id}/confirm`, { method: 'PUT' }),
+};
+
+export const stockApi = {
+  get: (homestayId: string, startDate: string, endDate: string) => 
+    fetchApi<StockInfo[]>(`/homestays/${homestayId}/stock?startDate=${startDate}&endDate=${endDate}`),
+  init: (homestayId: string, stockCount: number, days?: number) =>
+    fetchApi<InitStockResult>(`/homestays/${homestayId}/init-stock`, { 
+      method: 'POST', 
+      body: JSON.stringify({ stockCount, days }) 
+    }),
 };
 
 export const userApi = {
@@ -183,7 +194,57 @@ export interface CreateCategoryData { label: { zh: string; en: string; th: strin
 export interface Homestay { id: string; title: string; location: string; price: number; rating: number; reviews: number; images: string[]; type: string; guests: number; bedrooms: number; beds: number; bathrooms: number; amenities: string[]; host: { name: string; avatar: string; isSuperhost: boolean }; isFavorite: boolean; description?: string; coordinates?: { lat: number; lng: number }; }
 export interface CreateHomestayData { title: string; location: string; price: number; images: string[]; type: string; guests: number; bedrooms: number; beds: number; bathrooms: number; amenities: string[]; description: string; }
 export interface Booking { id: string; homestayId: string; homestay: Homestay; checkIn: string; checkOut: string; guests: { adults: number; children: number; infants: number }; totalPrice: number; status: 'pending' | 'confirmed' | 'cancelled' | 'completed'; createdAt: string; }
-export interface BookingData { homestayId: string; checkIn: string; checkOut: string; guests: { adults: number; children: number; infants: number }; }
+export interface BookingData { 
+  homestayId: string; 
+  checkIn: string; 
+  checkOut: string; 
+  guests?: number; 
+  remark?: string;
+  userId?: string;
+  guestName?: string;
+  guestPhone?: string;
+  guestEmail?: string;
+}
+export interface BookingResult {
+  orderId: string;
+  status: string;
+  needManualConfirm: boolean;
+  totalPrice: number;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  message: string;
+}
+export interface BookingDetail {
+  id: string;
+  homestayId: string;
+  homestay: {
+    id: string;
+    title: string;
+    location: string;
+    images: string[];
+    price: number;
+    guests: number;
+    bedrooms: number;
+  } | null;
+  userId: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    phone: string | null;
+  } | null;
+  checkIn: string | null;
+  checkOut: string | null;
+  guests: number | null;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+}
+export interface CancelResult { orderId: string; status: string; }
+export interface ConfirmResult { orderId: string; status: string; }
+export interface StockInfo { date: string; stockCount: number; }
+export interface InitStockResult { count: number; }
 export interface User { id: string; name: string; email: string; avatar?: string; phone?: string; isHost: boolean; }
 export interface RegisterData { name: string; email: string; password: string; phone?: string; }
 export interface Order { id: string; type: 'homestay' | 'car' | 'ticket' | 'dining'; userId: string; userName: string; itemName: string; totalPrice: number; status: 'pending' | 'confirmed' | 'cancelled' | 'completed'; createdAt: string; }
