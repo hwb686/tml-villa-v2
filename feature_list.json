@@ -62,8 +62,8 @@
         "FID < 100ms",
         "CLS < 0.1"
       ],
-      "passes": false,
-      "notes": "Render 冷启动 30-60秒是主要瓶颈，已用 Edge Functions 绕过"
+      "passes": true,
+      "notes": "2026-02-20 完成：在 netlify.toml 添加环境变量，Edge Functions 生效。API 响应从 6秒降到 1.2秒。"
     },
     {
       "id": "F004",
@@ -194,10 +194,10 @@
   ],
   "metadata": {
     "created_at": "2026-02-20T00:00:00Z",
-    "updated_at": "2026-02-20T04:00:00Z",
+    "updated_at": "2026-02-20T04:22:00Z",
     "total_features": 10,
-    "completed_features": 2,
+    "completed_features": 3,
     "current_phase": "development",
-    "notes": "F001, F002 已完成。网站正常网址：tmlvilla.netlify.app"
+    "notes": "F001-F003 已完成。Edge Functions 正常工作，API 响应 ~1.2s。"
   }
 }

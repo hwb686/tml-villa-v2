@@ -15,9 +15,9 @@
 
 ## 概览
 - **功能总数:** 10
-- **已完成:** 2
+- **已完成:** 3
 - **进行中:** 0
-- **剩余:** 8
+- **剩余:** 7
 - **当前阶段:** 开发中
 
 ## 部署信息
@@ -28,8 +28,9 @@
 | Supabase | https://tlorpxejqqmrdcfgvyhl.supabase.co |
 
 ## 已知问题
-1. ~~首页 API Error 500~~ ✅ 已验证不存在此问题
+1. ~~首页 API Error 500~~ ✅ 已修复
 2. ~~Netlify 部署状态~~ ✅ 已确认正常运行
+3. ~~API 性能问题~~ ✅ Edge Functions 生效，响应 ~1.2s
 
 ══════════════════════════════════════════════════════════════
 
@@ -115,6 +116,46 @@
 - 已完成功能: 2
 - 下一个功能: F003 (首页加载性能优化)
 - 备注: 网站正常运行，交接文档中提到的 API Error 500 未复现
+
+---
+
+## 会话 2 - 2026-02-20
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F003 (首页加载性能优化)
+
+### 开始时状态:
+- 已完成功能: 2
+- 当前功能: F003
+- 已知问题: API 响应慢，fallback 到 Render 后端
+
+### 完成的工作:
+- [x] 使用 Playwright 测试首页性能
+- [x] 发现 API 返回 500 错误，响应时间 6秒+
+- [x] 定位问题：VITE_SUPABASE_FUNCTIONS_URL 未配置
+- [x] 在 netlify.toml 添加环境变量
+- [x] 使用 Netlify API 触发重新部署
+- [x] 验证 Edge Functions 生效
+
+### 性能对比:
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| homestays API | 6201ms (500) | 1277ms |
+| categories API | 6206ms (500) | 1252ms |
+| 控制台错误 | 5个 | 0个 |
+
+### 修改的文件:
+- netlify.toml (添加环境变量)
+- feature_list.json (更新 F003 状态)
+- opencode-progress.txt (此文件)
+
+### 提交信息:
+- Hash: 4dc8fd1
+- Message: fix: add environment variables to netlify.toml for Edge Functions
+
+### 结束时状态:
+- 已完成功能: 3
+- 下一个功能: F004 (添加错误边界组件)
+- 备注: Edge Functions 正常工作，首页性能显著提升
 
 ---
 
