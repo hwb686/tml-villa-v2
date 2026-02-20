@@ -23,6 +23,35 @@ const checkPassword = async (plain, stored) => {
   return plain === stored;
 };
 
+/** 哈希密码 */
+const hashPassword = async (plain) => {
+  return bcrypt.hash(plain, 10);
+};
+
+/** JWT 认证中间件 - 验证用户Token */
+const authMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      next();
+    } catch (jwtError) {
+      return res.status(401).json({ code: 401, msg: 'Token无效或已过期' });
+    }
+  } catch (err) {
+    console.error('Auth middleware error:', err);
+    return res.status(500).json({ code: 500, msg: '认证失败' });
+  }
+};
+
 const app = express();
 
 // CORS middleware
@@ -1184,6 +1213,71 @@ app.get('/api/finance/transactions', async (req, res) => {
   }
 });
 
+// Auth - User Register
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, email, password, phone } = req.body;
+
+    // 验证必填字段
+    if (!email || !password) {
+      return res.status(400).json({ code: 400, msg: '邮箱和密码为必填项' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ code: 400, msg: '密码长度不能少于6位' });
+    }
+
+    // 检查邮箱是否已被注册
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ code: 400, msg: '该邮箱已被注册' });
+    }
+
+    // 检查用户名是否已被使用（如果提供了用户名）
+    if (username) {
+      const existingUsername = await prisma.user.findUnique({ where: { username } });
+      if (existingUsername) {
+        return res.status(400).json({ code: 400, msg: '该用户名已被使用' });
+      }
+    }
+
+    // 哈希密码
+    const hashedPassword = await hashPassword(password);
+
+    // 创建用户
+    const user = await prisma.user.create({
+      data: {
+        username: username || email.split('@')[0], // 默认使用邮箱前缀作为用户名
+        email,
+        password: hashedPassword,
+        phone: phone || null,
+        role: 'USER',
+        status: 'active',
+      },
+    });
+
+    // 生成JWT Token
+    const token = generateToken({ id: user.id, email: user.email, role: user.role });
+
+    res.json({
+      code: 200,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error registering user:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Auth - User Login
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -1214,12 +1308,70 @@ app.post('/api/auth/login', async (req, res) => {
           id: user.id,
           username: user.username,
           email: user.email,
+          phone: user.phone,
           role: user.role,
         },
       },
     });
   } catch (err) {
     console.error('Error logging in:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// Auth - User Logout
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    // JWT是无状态的，服务端不需要维护会话
+    // 客户端只需要删除本地存储的token即可
+    res.json({
+      code: 200,
+      msg: '登出成功',
+    });
+  } catch (err) {
+    console.error('Error logging out:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// Auth - Get Current User Info
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        avatar: true,
+        isHost: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+
+    res.json({
+      code: 200,
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        avatar: user.avatar,
+        isHost: user.isHost,
+        createdAt: user.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching current user:', err);
     res.status(500).json({ code: 500, msg: err.message });
   }
 });
@@ -1259,6 +1411,166 @@ app.post('/api/admin/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Error logging in admin:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// ============================================
+// Business Config APIs (业务配置)
+// ============================================
+
+// 验证管理员权限的中间件
+const verifyAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ code: 401, msg: '未授权访问' });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ code: 403, msg: '需要管理员权限' });
+    }
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ code: 401, msg: '无效的Token' });
+  }
+};
+
+// GET /api/config - 获取所有配置
+app.get('/api/config', async (req, res) => {
+  try {
+    const cacheKey = 'business_configs:all';
+    const fromCache = cache.get(cacheKey);
+    if (fromCache) {
+      return res.json(fromCache);
+    }
+
+    const configs = await prisma.businessConfig.findMany();
+    
+    // 转换为 key-value 对象格式
+    const data = {};
+    for (const config of configs) {
+      data[config.key] = config.value;
+    }
+    
+    const payload = { code: 200, data };
+    cache.set(cacheKey, payload);
+    res.json(payload);
+  } catch (err) {
+    console.error('Error fetching configs:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/config/:key - 获取单个配置
+app.get('/api/config/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    const config = await prisma.businessConfig.findUnique({
+      where: { key },
+    });
+    
+    if (!config) {
+      return res.status(404).json({ code: 404, msg: '配置项不存在' });
+    }
+    
+    res.json({ code: 200, data: config });
+  } catch (err) {
+    console.error('Error fetching config:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/config/:key - 更新配置（需管理员权限）
+app.put('/api/config/:key', verifyAdmin, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { value, description } = req.body;
+    
+    if (value === undefined) {
+      return res.status(400).json({ code: 400, msg: '请提供配置值' });
+    }
+    
+    const config = await prisma.businessConfig.upsert({
+      where: { key },
+      update: { 
+        value: String(value),
+        ...(description !== undefined && { description })
+      },
+      create: { 
+        key, 
+        value: String(value),
+        description 
+      },
+    });
+    
+    // 清除缓存
+    cache.del('business_configs:all');
+    
+    res.json({ code: 200, msg: '配置更新成功', data: config });
+  } catch (err) {
+    console.error('Error updating config:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/config - 创建新配置（需管理员权限）
+app.post('/api/config', verifyAdmin, async (req, res) => {
+  try {
+    const { key, value, description } = req.body;
+    
+    if (!key || value === undefined) {
+      return res.status(400).json({ code: 400, msg: '请提供配置键和值' });
+    }
+    
+    const existing = await prisma.businessConfig.findUnique({
+      where: { key },
+    });
+    
+    if (existing) {
+      return res.status(400).json({ code: 400, msg: '配置键已存在' });
+    }
+    
+    const config = await prisma.businessConfig.create({
+      data: { 
+        key, 
+        value: String(value),
+        description 
+      },
+    });
+    
+    // 清除缓存
+    cache.del('business_configs:all');
+    
+    res.json({ code: 200, msg: '配置创建成功', data: config });
+  } catch (err) {
+    console.error('Error creating config:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/config/:key - 删除配置（需管理员权限）
+app.delete('/api/config/:key', verifyAdmin, async (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    await prisma.businessConfig.delete({
+      where: { key },
+    });
+    
+    // 清除缓存
+    cache.del('business_configs:all');
+    
+    res.json({ code: 200, msg: '配置删除成功' });
+  } catch (err) {
+    console.error('Error deleting config:', err);
+    if (err.code === 'P2025') {
+      return res.status(404).json({ code: 404, msg: '配置项不存在' });
+    }
     res.status(500).json({ code: 500, msg: err.message });
   }
 });

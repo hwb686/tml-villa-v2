@@ -76,8 +76,9 @@
       "free_limit_impact": "无影响，JWT 无状态",
       "steps": ["注册页面", "邮箱验证", "登录/登出", "Token 管理"],
       "acceptance_criteria": ["用户可注册", "可登录登出", "密码加密存储"],
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "API已完成: POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me。密码使用bcrypt加密"
     },
     {
       "id": "F005",

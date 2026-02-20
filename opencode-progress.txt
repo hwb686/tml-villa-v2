@@ -205,6 +205,53 @@
 
 ---
 
+## 会话 4 - 2026-02-20
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F004 - 用户注册/登录系统
+
+### 开始时状态:
+- 已完成功能: 3
+- 当前功能: F004
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 添加 JWT 认证中间件 (authMiddleware)
+- [x] 添加密码哈希函数 (hashPassword)
+- [x] 实现 POST /api/auth/register - 用户注册
+- [x] 实现 POST /api/auth/login - 用户登录 (增强: 添加phone字段返回)
+- [x] 实现 POST /api/auth/logout - 用户登出
+- [x] 实现 GET /api/auth/me - 获取当前用户信息
+
+### API 端点:
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| /api/auth/register | POST | 用户注册 (返回token和user) |
+| /api/auth/login | POST | 用户登录 (返回token和user) |
+| /api/auth/logout | POST | 用户登出 (返回成功消息) |
+| /api/auth/me | GET | 获取当前用户信息 (需要Bearer Token) |
+
+### 测试结果:
+- [x] 用户注册成功 ✅
+- [x] 用户登录成功 ✅
+- [x] 获取当前用户信息成功 ✅
+- [x] 用户登出成功 ✅
+- [x] 重复邮箱注册被拒绝 ✅
+- [x] 错误密码登录被拒绝 ✅
+- [x] 无Token访问被拒绝 ✅
+- [x] 无效Token访问被拒绝 ✅
+- [x] 短密码注册被拒绝 ✅
+
+### 修改的文件:
+- backend/api/db.js (添加认证API)
+- feature_list.json (更新 F004 状态)
+
+### 结束时状态:
+- 已完成功能: 4
+- 下一个功能: F005 (民宿预订流程)
+- 备注: 所有API已测试通过，密码使用bcrypt加密存储
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════
