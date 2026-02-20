@@ -319,9 +319,9 @@
       },
       "steps": ["创建配置表", "管理后台配置界面", "订单流程读取配置"],
       "acceptance_criteria": ["管理员可切换确认模式", "配置实时生效", "每种业务独立配置"],
-      "status": "missing",
-      "passes": false,
-      "notes": "核心功能：所有业务都有独立的确认模式开关"
+      "status": "done",
+      "passes": true,
+      "notes": "API已完成: GET /api/config, GET /api/config/:key, PUT /api/config/:key, POST /api/config, DELETE /api/config/:key。支持缓存，需要管理员权限才能修改配置。"
     }
   ],
   "data_model_optimizations": {

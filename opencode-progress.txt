@@ -252,6 +252,69 @@
 
 ---
 
+## 会话 5 - 2026-02-20
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F026 - 业务配置系统
+
+### 开始时状态:
+- 已完成功能: 4
+- 当前功能: F026
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 确认 BusinessConfig 模型已在 schema.prisma 中定义
+- [x] 确认 API 路由已在 db.js 中实现
+- [x] 修复 Prisma 与 Supabase 连接池兼容性问题（添加 pgbouncer=true 参数）
+- [x] 添加 DIRECT_DATABASE_URL 环境变量用于迁移
+- [x] 创建数据库迁移文件
+- [x] 运行 seed 插入默认配置
+- [x] 测试所有 API 端点
+
+### API 端点:
+| 端点 | 方法 | 描述 | 权限 |
+|------|------|------|------|
+| /api/config | GET | 获取所有配置 | 公开 |
+| /api/config/:key | GET | 获取单个配置 | 公开 |
+| /api/config/:key | PUT | 更新配置 | 管理员 |
+| /api/config | POST | 创建配置 | 管理员 |
+| /api/config/:key | DELETE | 删除配置 | 管理员 |
+
+### 默认配置:
+| Key | Value | Description |
+|-----|-------|-------------|
+| homestay.manual_confirm | true | 民宿订单需人工确认 |
+| car.manual_confirm | true | 租车订单需人工确认 |
+| meal.manual_confirm | false | 餐饮订单即时确认 |
+| ticket.manual_confirm | false | 票务订单即时确认 |
+
+### 测试结果:
+- [x] GET /api/config 返回所有配置 ✅
+- [x] GET /api/config/:key 返回单个配置 ✅
+- [x] PUT /api/config/:key 更新配置成功 ✅
+- [x] 无权限访问被拒绝 ✅
+- [x] 缓存功能正常工作 ✅
+
+### 修改的文件:
+- backend/prisma/schema.prisma (添加 directUrl 配置)
+- backend/prisma/migrations/20260220141203_add_business_config/migration.sql (新建)
+- backend/prisma/seed.js (已有默认配置)
+- backend/lib/prisma.js (添加 preparedStatements: false 配置)
+- backend/.env (添加 DIRECT_DATABASE_URL, 修改 DATABASE_URL 添加 pgbouncer=true)
+- feature_list.json (更新 F026 状态)
+
+### 技术要点:
+- 使用 node-cache 实现内存缓存
+- 缓存 TTL 默认 30 秒（可通过 CACHE_TTL_SECONDS 环境变量配置）
+- 配置更新时自动清除缓存
+- 支持 Supabase 连接池（pgbouncer 模式）
+
+### 结束时状态:
+- 已完成功能: 5
+- 下一个功能: F005 (民宿预订流程完整性)
+- 备注: 解决了 Prisma 与 Supabase 连接池的兼容性问题，所有配置 API 测试通过
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════

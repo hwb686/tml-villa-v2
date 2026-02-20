@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -227,4 +228,16 @@ model TicketOrder {
   ticketConfig  TicketConfig @relation(fields: [ticketConfigId], references: [id])
   
   @@map("ticket_orders")
+}
+
+// 业务配置（后台可配置各业务线的确认模式）
+model BusinessConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("business_configs")
 }

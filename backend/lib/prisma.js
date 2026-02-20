@@ -8,6 +8,13 @@ let prisma;
 if (!global.prisma) {
   global.prisma = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+    // Disable prepared statements for Supabase connection pool compatibility
+    // https://www.prisma.io/docs/orm/more/problems-and-issues/supabase-connection-pool
+    __internal: {
+      engine: {
+        preparedStatements: false,
+      },
+    },
   });
 }
 prisma = global.prisma;
