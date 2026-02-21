@@ -1067,3 +1067,54 @@
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════
+
+---
+
+## 会话 16 - 2026-02-21
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F015 - 管理端日历视图
+
+### 开始时状态 / Status at Start:
+- 已完成功能: 15
+- 当前功能: F015
+- 已知问题: 无
+
+### 完成的工作 / Work Completed:
+- [x] 创建后端API: /api/calendar/rooms (房间库存汇总日历)
+- [x] 创建后端API: /api/calendar/cars (车辆库存汇总日历)
+- [x] 创建后端API: /api/calendar/detail (日期详情)
+- [x] 创建前端页面: CalendarView.tsx
+- [x] 更新路由: AdminApp.tsx
+- [x] 更新导航: Sidebar.tsx
+- [x] 修复后端Prisma模型引用 (Stock -> HouseStock)
+
+### 技术实现:
+- 日历状态颜色: 绿色(充足>50%)、黄色(紧张10%-50%)、红色(满房<10%)、灰色(未设置)
+- 房间/车辆标签页切换
+- 月份导航和"今天"按钮
+- 点击日期显示详情弹窗
+- 统计信息显示（房源数/车型数、已预订、可预订、有库存天数）
+
+### 执行的测试 / Testing Performed:
+- API测试:
+  - POST /api/admin/login - 登录成功
+  - GET /api/calendar/rooms?month=2026-02 - 返回2个民宿, 9天库存数据
+  - GET /api/calendar/cars?month=2026-02 - 返回1个车型, 0天库存数据
+  - GET /api/calendar/detail?date=2026-02-25&type=rooms - 返回房间详情
+
+### 修改的文件 / Files Modified:
+- backend/api/db.js (新增日历API)
+- app/src/pages/CalendarView.tsx (新建)
+- app/src/AdminApp.tsx (添加路由)
+- app/src/components/layout/Sidebar.tsx (添加导航)
+- feature_list.json (更新F015状态)
+
+### 提交信息 / Commit:
+- 待提交
+
+### 结束时状态 / Status at End:
+- 已完成功能: 16
+- 下一个功能: F016 (免费额度监控)
+- 备注: 日历视图功能完整，支持房间和车辆库存汇总显示，颜色状态标识清晰
+
+---

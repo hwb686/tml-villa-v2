@@ -285,8 +285,15 @@
       "title": "管理端日历视图",
       "description": "日历查看房间/车辆可用性",
       "free_limit_impact": "无影响",
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "acceptance_criteria": [
+        "可以按日历查看房间可用性",
+        "可以按日历查看车辆可用性",
+        "可以点击日期查看详情",
+        "不同状态用不同颜色标识"
+      ],
+      "notes": "已于 2026-02-21 完成。实现了日历汇总视图功能，后端API: /api/calendar/rooms, /api/calendar/cars, /api/calendar/detail。前端页面: CalendarView.tsx。支持房间和车辆两个标签页，每个日期显示可用数量和状态颜色（绿色充足、黄色紧张、红色满房、灰色未设置）。点击日期可查看详情弹窗。"
     },
     {
       "id": "F016",

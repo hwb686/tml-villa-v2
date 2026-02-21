@@ -5317,6 +5317,304 @@ app.get('/api/reports/homestays', async (req, res) => {
   }
 });
 
+// ============================================
+// Calendar View APIs (日历汇总视图)
+// ============================================
+
+// GET /api/calendar/rooms - 获取房间库存汇总日历
+app.get('/api/calendar/rooms', verifyAdmin, async (req, res) => {
+  try {
+    const { month } = req.query;
+    
+    let startDate, endDate;
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      startDate = new Date(year, mon - 1, 1);
+      endDate = new Date(year, mon, 0);
+    } else {
+      const now = new Date();
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+    
+    // 获取所有民宿
+    const homestays = await prisma.homestay.findMany({
+      select: { id: true, title: true, price: true },
+    });
+    
+    // 获取日期范围内的所有库存
+    const stocks = await prisma.houseStock.findMany({
+      where: {
+        date: { gte: startDate, lte: endDate },
+      },
+    });
+    
+    // 按日期组织数据
+    const calendar = {};
+    for (const stock of stocks) {
+      const dateStr = stock.date.toISOString().split('T')[0];
+      if (!calendar[dateStr]) {
+        calendar[dateStr] = {
+          totalRooms: 0,
+          totalStock: 0,
+          totalBooked: 0,
+          homestays: [],
+        };
+      }
+      calendar[dateStr].totalRooms++;
+      calendar[dateStr].totalStock += stock.totalStock;
+      calendar[dateStr].totalBooked += stock.bookedStock;
+      const homestay = homestays.find(h => h.id === stock.houseId);
+      if (homestay) {
+        calendar[dateStr].homestays.push({
+          id: stock.houseId,
+          title: homestay.title,
+          total: stock.totalStock,
+          booked: stock.bookedStock,
+          available: stock.totalStock - stock.bookedStock,
+          price: stock.price || homestay.price,
+        });
+      }
+    }
+    
+    // 计算每个日期的可用状态
+    const result = {};
+    for (const [dateStr, data] of Object.entries(calendar)) {
+      const totalAvailable = data.totalStock - data.totalBooked;
+      let status = 'unknown';
+      if (data.totalStock > 0) {
+        const availableRate = totalAvailable / data.totalStock;
+        if (availableRate > 0.5) status = 'available';
+        else if (availableRate > 0.1) status = 'limited';
+        else status = 'full';
+      }
+      
+      result[dateStr] = {
+        ...data,
+        totalAvailable,
+        status,
+      };
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        month: month || `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`,
+        homestays,
+        calendar: result,
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching room calendar:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/calendar/cars - 获取车辆库存汇总日历
+app.get('/api/calendar/cars', verifyAdmin, async (req, res) => {
+  try {
+    const { month } = req.query;
+    
+    let startDate, endDate;
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      startDate = new Date(year, mon - 1, 1);
+      endDate = new Date(year, mon, 0);
+    } else {
+      const now = new Date();
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+    
+    // 获取所有车辆配置
+    const carConfigs = await prisma.carConfig.findMany({
+      select: { id: true, name: true, price: true, carType: true, hasDriver: true },
+      where: { isActive: true },
+    });
+    
+    // 获取日期范围内的所有库存
+    const stocks = await prisma.carStock.findMany({
+      where: {
+        date: { gte: startDate, lte: endDate },
+      },
+    });
+    
+    // 按日期组织数据
+    const calendar = {};
+    for (const stock of stocks) {
+      const dateStr = stock.date.toISOString().split('T')[0];
+      if (!calendar[dateStr]) {
+        calendar[dateStr] = {
+          totalCars: 0,
+          totalStock: 0,
+          totalBooked: 0,
+          cars: [],
+        };
+      }
+      calendar[dateStr].totalCars++;
+      calendar[dateStr].totalStock += stock.totalStock;
+      calendar[dateStr].totalBooked += stock.bookedStock;
+      const car = carConfigs.find(c => c.id === stock.carConfigId);
+      if (car) {
+        calendar[dateStr].cars.push({
+          id: stock.carConfigId,
+          name: car.name,
+          carType: car.carType,
+          hasDriver: car.hasDriver,
+          total: stock.totalStock,
+          booked: stock.bookedStock,
+          available: stock.totalStock - stock.bookedStock,
+          price: stock.price || car.price,
+        });
+      }
+    }
+    
+    // 计算每个日期的可用状态
+    const result = {};
+    for (const [dateStr, data] of Object.entries(calendar)) {
+      const totalAvailable = data.totalStock - data.totalBooked;
+      let status = 'unknown';
+      if (data.totalStock > 0) {
+        const availableRate = totalAvailable / data.totalStock;
+        if (availableRate > 0.5) status = 'available';
+        else if (availableRate > 0.1) status = 'limited';
+        else status = 'full';
+      }
+      
+      result[dateStr] = {
+        ...data,
+        totalAvailable,
+        status,
+      };
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        month: month || `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`,
+        carConfigs,
+        calendar: result,
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching car calendar:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/calendar/detail - 获取某日期的详细库存信息
+app.get('/api/calendar/detail', verifyAdmin, async (req, res) => {
+  try {
+    const { date, type } = req.query; // type: 'rooms' | 'cars'
+    
+    if (!date) {
+      return res.status(400).json({ code: 400, msg: '请提供日期参数' });
+    }
+    
+    const queryDate = new Date(date);
+    
+    if (type === 'rooms' || !type) {
+      // 获取房间库存详情
+      const stocks = await prisma.houseStock.findMany({
+        where: { date: queryDate },
+        include: { house: true },
+      });
+      
+      const bookings = await prisma.order.findMany({
+        where: {
+          type: 'homestay',
+          checkIn: { lte: queryDate },
+          checkOut: { gt: queryDate },
+          status: { in: ['confirmed', 'pending'] },
+        },
+        include: { user: true, house: true },
+      });
+      
+      const rooms = stocks.map(s => ({
+        id: s.houseId,
+        title: s.house?.title || '未知',
+        total: s.totalStock,
+        booked: s.bookedStock,
+        available: s.totalStock - s.bookedStock,
+        price: s.price || s.house?.price || 0,
+        status: s.bookedStock >= s.totalStock ? 'full' : s.totalStock - s.bookedStock <= 1 ? 'limited' : 'available',
+      }));
+      
+      res.json({
+        code: 200,
+        data: {
+          date,
+          type: 'rooms',
+          rooms,
+          bookings: bookings.map(b => ({
+            id: b.orderId,
+            guestName: b.user?.username || b.guestName || '未知',
+            guestPhone: b.user?.phone || b.guestPhone || '-',
+            homestayTitle: b.house?.title || b.itemName,
+            checkIn: b.checkIn?.toISOString().split('T')[0],
+            checkOut: b.checkOut?.toISOString().split('T')[0],
+            status: b.status,
+            totalPrice: b.totalPrice,
+          })),
+        }
+      });
+    } else if (type === 'cars') {
+      // 获取车辆库存详情
+      const stocks = await prisma.carStock.findMany({
+        where: { date: queryDate },
+        include: { carConfig: true },
+      });
+      
+      const rentals = await prisma.carRental.findMany({
+        where: {
+          startTime: { lte: queryDate },
+          endTime: { gt: queryDate },
+          status: { in: ['CONFIRMED', 'PENDING'] },
+        },
+        include: { carConfig: true, driver: true },
+      });
+      
+      const cars = stocks.map(s => ({
+        id: s.carConfigId,
+        name: s.carConfig?.name || '未知',
+        carType: s.carConfig?.carType || '未知',
+        hasDriver: s.carConfig?.hasDriver || false,
+        total: s.totalStock,
+        booked: s.bookedStock,
+        available: s.totalStock - s.bookedStock,
+        price: s.price || s.carConfig?.price || 0,
+        status: s.bookedStock >= s.totalStock ? 'full' : s.totalStock - s.bookedStock <= 1 ? 'limited' : 'available',
+      }));
+      
+      res.json({
+        code: 200,
+        data: {
+          date,
+          type: 'cars',
+          cars,
+          rentals: rentals.map(r => ({
+            id: r.id,
+            roomNumber: r.roomNumber,
+            carName: r.carConfig?.name || r.itemName,
+            startTime: r.startTime.toISOString(),
+            endTime: r.endTime.toISOString(),
+            days: r.days,
+            needDriver: r.needDriver,
+            driverName: r.driver?.name,
+            status: r.status,
+            totalPrice: r.totalPrice,
+          })),
+        }
+      });
+    } else {
+      res.status(400).json({ code: 400, msg: '无效的类型参数' });
+    }
+  } catch (err) {
+    console.error('Error fetching calendar detail:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

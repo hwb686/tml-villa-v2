@@ -20,6 +20,7 @@ interface SidebarProps {
 
 const menuItems: MenuItem[] = [
   { key: 'dashboard', label: '仪表板', icon: LayoutDashboard, path: 'dashboard' },
+  { key: 'calendar', label: '日历视图', icon: Calendar, path: 'calendar' },
   { key: 'users', label: '用户管理', icon: Users, path: 'users' },
   { key: 'categories', label: '分类管理', icon: Tags, path: 'categories' },
   { key: 'homestays', label: '民宿管理', icon: Home, path: 'homestays' },
