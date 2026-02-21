@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ClipboardList, CreditCard, Settings, ChevronDown, ChevronRight, Home, Car, Ticket, UtensilsCrossed, LogOut, Menu, X, Tags, Calendar, User, MessageSquare, Users2 } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, CreditCard, Settings, ChevronDown, ChevronRight, Home, Car, Ticket, UtensilsCrossed, LogOut, Menu, X, Tags, Calendar, User, MessageSquare, Users2, Calculator, PieChart } from 'lucide-react';
 
 interface MenuItem {
   key: string;
@@ -72,6 +72,8 @@ const menuItems: MenuItem[] = [
       { key: 'finance-overview', label: '收入统计', icon: CreditCard, path: 'finance/overview' },
       { key: 'finance-withdrawal', label: '提现管理', icon: CreditCard, path: 'finance/withdrawal' },
       { key: 'finance-transactions', label: '交易记录', icon: CreditCard, path: 'finance/transactions' },
+      { key: 'costs', label: '成本管理', icon: Calculator, path: 'costs' },
+      { key: 'cost-stats', label: '成本统计', icon: PieChart, path: 'cost-stats' },
     ]
   },
   { key: 'reviews', label: '评价管理', icon: MessageSquare, path: 'reviews' },

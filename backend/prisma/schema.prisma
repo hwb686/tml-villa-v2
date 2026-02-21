@@ -409,3 +409,23 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
 }
+
+// 成本记录
+model Cost {
+  id          String   @id @default(cuid())
+  costType    String   @map("cost_type") // rent, utilities, salary, maintenance, procurement, other
+  amount      Int      // 金额（泰铢）
+  date        DateTime @db.Date // 成本发生日期
+  description String?  // 描述
+  relatedId   String?  @map("related_id") // 关联项目ID（如员工ID、民宿ID等）
+  relatedType String?  @map("related_type") // 关联项目类型（staff, homestay, car, meal, ticket）
+  status      String   @default("confirmed") // pending, confirmed, cancelled
+  remark      String?  // 备注
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([costType])
+  @@index([date])
+  @@index([status])
+  @@map("costs")
+}

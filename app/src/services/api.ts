@@ -801,4 +801,122 @@ export const staffApi = {
   getTypes: () => fetchApi<Array<{ value: string; label: string; labelEn: string }>>('/staffs/types'),
 };
 
+// ============================================
+// 成本核算相关类型和 API
+// ============================================
+
+// 成本类型
+export type CostType = 'rent' | 'utilities' | 'salary' | 'maintenance' | 'procurement' | 'other';
+
+// 成本记录
+export interface Cost {
+  id: string;
+  costType: CostType;
+  costTypeLabel: string;
+  amount: number;
+  date: string;
+  description?: string;
+  relatedId?: string;
+  relatedType?: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  remark?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 创建成本数据
+export interface CreateCostData {
+  costType: CostType;
+  amount: number;
+  date: string;
+  description?: string;
+  relatedId?: string;
+  relatedType?: string;
+  remark?: string;
+}
+
+// 成本类型信息
+export interface CostTypeInfo {
+  value: CostType;
+  label: string;
+  color: string;
+}
+
+// 成本统计 - 按类型
+export interface CostByType {
+  type: CostType;
+  label: string;
+  color: string;
+  amount: number;
+  count: number;
+}
+
+// 成本统计 - 月度趋势
+export interface CostMonthlyTrend {
+  month: string;
+  cost: number;
+  income: number;
+  profit: number;
+}
+
+// 成本统计 - 汇总
+export interface CostStatsSummary {
+  totalCost: number;
+  totalIncome: number;
+  profit: number;
+  profitMargin: number;
+}
+
+// 成本统计数据
+export interface CostStatsData {
+  summary: CostStatsSummary;
+  byType: CostByType[];
+  monthlyTrend: CostMonthlyTrend[];
+}
+
+// 成本 API
+export const costApi = {
+  // 获取成本类型列表
+  getTypes: () => fetchApi<CostTypeInfo[]>('/costs/types'),
+  
+  // 获取成本列表
+  getAll: (params?: { costType?: CostType; status?: string; startDate?: string; endDate?: string; page?: number; pageSize?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.costType) queryParams.append('costType', params.costType);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.pageSize) queryParams.append('pageSize', String(params.pageSize));
+    return fetchApi<{ list: Cost[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }>(`/costs?${queryParams.toString()}`);
+  },
+  
+  // 获取成本详情
+  getById: (id: string) => fetchApi<Cost>(`/costs/${id}`),
+  
+  // 创建成本
+  create: (data: CreateCostData) => fetchAdminApi<Cost>('/costs', { 
+    method: 'POST', 
+    body: JSON.stringify(data) 
+  }),
+  
+  // 更新成本
+  update: (id: string, data: Partial<CreateCostData> & { status?: string }) => 
+    fetchAdminApi<Cost>(`/costs/${id}`, { 
+      method: 'PUT', 
+      body: JSON.stringify(data) 
+    }),
+  
+  // 删除成本
+  delete: (id: string) => fetchAdminApi<void>(`/costs/${id}`, { method: 'DELETE' }),
+  
+  // 获取成本统计
+  getStats: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<CostStatsData>(`/costs/stats?${queryParams.toString()}`);
+  },
+};
+
 export { fetchApi };

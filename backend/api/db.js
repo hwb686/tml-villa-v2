@@ -4567,6 +4567,370 @@ app.delete('/api/notifications/cleanup', verifyAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// Cost APIs (成本核算)
+// ============================================
+
+// 成本类型定义
+const COST_TYPES = {
+  rent: { label: '房租', color: '#1890ff' },
+  utilities: { label: '水电费', color: '#52c41a' },
+  salary: { label: '员工工资', color: '#faad14' },
+  maintenance: { label: '维护费', color: '#eb2f96' },
+  procurement: { label: '采购费', color: '#722ed1' },
+  other: { label: '其他', color: '#8c8c8c' },
+};
+
+// GET /api/costs/types - 获取成本类型列表
+app.get('/api/costs/types', (req, res) => {
+  const types = Object.entries(COST_TYPES).map(([key, value]) => ({
+    value: key,
+    label: value.label,
+    color: value.color,
+  }));
+  res.json({ code: 200, data: types });
+});
+
+// GET /api/costs - 获取成本列表（支持筛选）
+app.get('/api/costs', async (req, res) => {
+  try {
+    const { costType, status, startDate, endDate, page = 1, pageSize = 20 } = req.query;
+    
+    const where = {};
+    if (costType) where.costType = costType;
+    if (status) where.status = status;
+    if (startDate || endDate) {
+      where.date = {};
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    
+    const [costs, total] = await Promise.all([
+      prisma.cost.findMany({
+        where,
+        orderBy: { date: 'desc' },
+        skip,
+        take: parseInt(pageSize),
+      }),
+      prisma.cost.count({ where }),
+    ]);
+    
+    const data = costs.map(c => ({
+      id: c.id,
+      costType: c.costType,
+      costTypeLabel: COST_TYPES[c.costType]?.label || c.costType,
+      amount: c.amount,
+      date: c.date.toISOString().split('T')[0],
+      description: c.description,
+      relatedId: c.relatedId,
+      relatedType: c.relatedType,
+      status: c.status,
+      remark: c.remark,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+    }));
+    
+    res.json({
+      code: 200,
+      data: {
+        list: data,
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          total,
+          totalPages: Math.ceil(total / parseInt(pageSize)),
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching costs:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/costs/stats - 获取成本统计（必须在 :id 之前定义）
+app.get('/api/costs/stats', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const where = { status: 'confirmed' };
+    if (startDate || endDate) {
+      where.date = {};
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
+    }
+    
+    // 获取所有符合条件的成本
+    const costs = await prisma.cost.findMany({
+      where,
+      select: {
+        costType: true,
+        amount: true,
+        date: true,
+      },
+    });
+    
+    // 总成本
+    const totalCost = costs.reduce((sum, c) => sum + c.amount, 0);
+    
+    // 按类型统计
+    const byType = {};
+    for (const cost of costs) {
+      if (!byType[cost.costType]) {
+        byType[cost.costType] = {
+          type: cost.costType,
+          label: COST_TYPES[cost.costType]?.label || cost.costType,
+          color: COST_TYPES[cost.costType]?.color || '#8c8c8c',
+          amount: 0,
+          count: 0,
+        };
+      }
+      byType[cost.costType].amount += cost.amount;
+      byType[cost.costType].count += 1;
+    }
+    
+    // 按月份统计（趋势）
+    const byMonth = {};
+    for (const cost of costs) {
+      const monthKey = cost.date.toISOString().slice(0, 7); // YYYY-MM
+      if (!byMonth[monthKey]) {
+        byMonth[monthKey] = {
+          month: monthKey,
+          amount: 0,
+          count: 0,
+        };
+      }
+      byMonth[monthKey].amount += cost.amount;
+      byMonth[monthKey].count += 1;
+    }
+    
+    // 获取收入数据（从 Order 表）
+    const incomeWhere = { status: 'completed' };
+    if (startDate || endDate) {
+      incomeWhere.createdAt = {};
+      if (startDate) incomeWhere.createdAt.gte = new Date(startDate);
+      if (endDate) incomeWhere.createdAt.lte = new Date(endDate);
+    }
+    
+    const orders = await prisma.order.findMany({
+      where: incomeWhere,
+      select: {
+        totalPrice: true,
+        createdAt: true,
+      },
+    });
+    
+    const totalIncome = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const profit = totalIncome - totalCost;
+    
+    // 按月份收入统计
+    const incomeByMonth = {};
+    for (const order of orders) {
+      const monthKey = order.createdAt.toISOString().slice(0, 7);
+      if (!incomeByMonth[monthKey]) {
+        incomeByMonth[monthKey] = {
+          month: monthKey,
+          income: 0,
+        };
+      }
+      incomeByMonth[monthKey].income += order.totalPrice;
+    }
+    
+    // 合并月度数据
+    const allMonths = new Set([
+      ...Object.keys(byMonth),
+      ...Object.keys(incomeByMonth),
+    ]);
+    const monthlyTrend = Array.from(allMonths).sort().map(month => ({
+      month,
+      cost: byMonth[month]?.amount || 0,
+      income: incomeByMonth[month]?.income || 0,
+      profit: (incomeByMonth[month]?.income || 0) - (byMonth[month]?.amount || 0),
+    }));
+    
+    res.json({
+      code: 200,
+      data: {
+        summary: {
+          totalCost,
+          totalIncome,
+          profit,
+          profitMargin: totalIncome > 0 ? Math.round((profit / totalIncome) * 100) : 0,
+        },
+        byType: Object.values(byType).sort((a, b) => b.amount - a.amount),
+        monthlyTrend,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching cost stats:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/costs/:id - 获取单条成本详情
+app.get('/api/costs/:id', async (req, res) => {
+  try {
+    const cost = await prisma.cost.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!cost) {
+      return res.status(404).json({ code: 404, msg: '成本记录不存在' });
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        id: cost.id,
+        costType: cost.costType,
+        costTypeLabel: COST_TYPES[cost.costType]?.label || cost.costType,
+        amount: cost.amount,
+        date: cost.date.toISOString().split('T')[0],
+        description: cost.description,
+        relatedId: cost.relatedId,
+        relatedType: cost.relatedType,
+        status: cost.status,
+        remark: cost.remark,
+        createdAt: cost.createdAt.toISOString(),
+        updatedAt: cost.updatedAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching cost:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/costs - 创建成本记录
+app.post('/api/costs', verifyAdmin, async (req, res) => {
+  try {
+    const { costType, amount, date, description, relatedId, relatedType, remark } = req.body;
+    
+    // 参数验证
+    if (!costType || !amount || !date) {
+      return res.status(400).json({ code: 400, msg: '请提供成本类型、金额和日期' });
+    }
+    
+    if (!COST_TYPES[costType]) {
+      return res.status(400).json({ code: 400, msg: '无效的成本类型' });
+    }
+    
+    if (amount <= 0) {
+      return res.status(400).json({ code: 400, msg: '金额必须大于0' });
+    }
+    
+    const cost = await prisma.cost.create({
+      data: {
+        costType,
+        amount,
+        date: new Date(date),
+        description: description || null,
+        relatedId: relatedId || null,
+        relatedType: relatedType || null,
+        status: 'confirmed',
+        remark: remark || null,
+      },
+    });
+    
+    res.json({
+      code: 200,
+      msg: '成本记录创建成功',
+      data: {
+        id: cost.id,
+        costType: cost.costType,
+        costTypeLabel: COST_TYPES[cost.costType]?.label || cost.costType,
+        amount: cost.amount,
+        date: cost.date.toISOString().split('T')[0],
+        description: cost.description,
+        status: cost.status,
+      },
+    });
+  } catch (err) {
+    console.error('Error creating cost:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/costs/:id - 更新成本记录
+app.put('/api/costs/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { costType, amount, date, description, relatedId, relatedType, status, remark } = req.body;
+    
+    const existingCost = await prisma.cost.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!existingCost) {
+      return res.status(404).json({ code: 404, msg: '成本记录不存在' });
+    }
+    
+    // 参数验证
+    if (costType && !COST_TYPES[costType]) {
+      return res.status(400).json({ code: 400, msg: '无效的成本类型' });
+    }
+    
+    if (amount !== undefined && amount <= 0) {
+      return res.status(400).json({ code: 400, msg: '金额必须大于0' });
+    }
+    
+    const updateData = {};
+    if (costType) updateData.costType = costType;
+    if (amount !== undefined) updateData.amount = amount;
+    if (date) updateData.date = new Date(date);
+    if (description !== undefined) updateData.description = description || null;
+    if (relatedId !== undefined) updateData.relatedId = relatedId || null;
+    if (relatedType !== undefined) updateData.relatedType = relatedType || null;
+    if (status) updateData.status = status;
+    if (remark !== undefined) updateData.remark = remark || null;
+    
+    const cost = await prisma.cost.update({
+      where: { id: req.params.id },
+      data: updateData,
+    });
+    
+    res.json({
+      code: 200,
+      msg: '成本记录更新成功',
+      data: {
+        id: cost.id,
+        costType: cost.costType,
+        costTypeLabel: COST_TYPES[cost.costType]?.label || cost.costType,
+        amount: cost.amount,
+        date: cost.date.toISOString().split('T')[0],
+        description: cost.description,
+        status: cost.status,
+      },
+    });
+  } catch (err) {
+    console.error('Error updating cost:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/costs/:id - 删除成本记录
+app.delete('/api/costs/:id', verifyAdmin, async (req, res) => {
+  try {
+    const cost = await prisma.cost.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!cost) {
+      return res.status(404).json({ code: 404, msg: '成本记录不存在' });
+    }
+    
+    await prisma.cost.delete({
+      where: { id: req.params.id },
+    });
+    
+    res.json({ code: 200, msg: '成本记录已删除' });
+  } catch (err) {
+    console.error('Error deleting cost:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

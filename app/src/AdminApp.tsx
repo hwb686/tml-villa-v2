@@ -18,6 +18,8 @@ import TicketConfigs from '@/pages/TicketConfigs';
 import StockManagement from '@/pages/StockManagement';
 
 import Finance from '@/pages/Finance';
+import Costs from '@/pages/Costs';
+import CostStats from '@/pages/CostStats';
 import Settings from '@/pages/Settings';
 import Categories from '@/pages/Categories';
 import HomestayManage from '@/pages/HomestayManage';
@@ -97,6 +99,10 @@ case 'car-rentals':
 
       case 'finance':
         return <Finance />;
+      case 'costs':
+        return <Costs />;
+      case 'cost-stats':
+        return <CostStats />;
       case 'reviews':
         return <Reviews />;
       case 'settings':

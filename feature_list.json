@@ -248,9 +248,9 @@
       "title": "成本核算",
       "description": "自有业务成本管理",
       "free_limit_impact": "无影响",
-      "status": "partial",
-      "passes": false,
-      "notes": "自有业务特有需求"
+      "status": "done",
+      "passes": true,
+      "notes": "已于 2026-02-21 完成。后端API包括成本类型列表、成本CRUD、成本统计；前端页面包括成本管理(Costs)和成本统计(CostStats)；支持6种成本类型(房租、水电费、员工工资、维护费、采购费、其他)；统计页面显示收入、成本、利润及利润率；支持按类型、日期筛选；修复了API路由顺序问题(stats路由必须在:id路由之前定义)"
     },
     {
       "id": "F014",
