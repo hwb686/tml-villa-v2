@@ -134,8 +134,9 @@
       "optimization": "只存未来90天库存，过期自动删除",
       "steps": ["设置房间数量", "日历视图", "预订扣减", "取消释放"],
       "acceptance_criteria": ["日历显示可用性", "预订校验库存", "超售保护"],
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已完成: 后端API包括获取库存、初始化库存、更新库存、批量设置、清理过期库存、获取不可用日期；前端StockManagement页面实现日历视图；预订流程集成库存检查和扣减；取消订单自动释放库存；fetchAdminApi实现管理员权限认证"
     },
     {
       "id": "F008",

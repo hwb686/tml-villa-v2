@@ -25,6 +25,21 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   return { data: backendResponse.data, success: backendResponse.code === 200, message: backendResponse.msg };
 }
 
+// 带管理员认证的 API 调用
+async function fetchAdminApi<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  const adminToken = localStorage.getItem('adminToken');
+  if (!adminToken) {
+    throw new Error('未登录管理员账户');
+  }
+  return fetchApi<T>(endpoint, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${adminToken}`,
+    },
+  });
+}
+
 // Homestay API
 export const homestayApi = {
   getAll: async (params?: { category?: string; location?: string; checkIn?: string; checkOut?: string; guests?: number }) => {
@@ -57,7 +72,8 @@ export const bookingApi = {
   getMyBookings: () => fetchApi<Booking[]>('/bookings/my'),
   getById: (id: string) => fetchApi<BookingDetail>(`/bookings/${id}`),
   cancel: (id: string) => fetchApi<CancelResult>(`/bookings/${id}/cancel`, { method: 'PUT' }),
-  confirm: (id: string) => fetchApi<ConfirmResult>(`/bookings/${id}/confirm`, { method: 'PUT' }),
+  // 以下方法需要管理员权限
+  confirm: (id: string) => fetchAdminApi<ConfirmResult>(`/bookings/${id}/confirm`, { method: 'PUT' }),
 };
 
 export const stockApi = {
@@ -68,23 +84,24 @@ export const stockApi = {
     if (params.endDate) queryParams.append('endDate', params.endDate);
     return fetchApi<StockData>(`/homestays/${homestayId}/stock?${queryParams.toString()}`);
   },
+  // 以下方法需要管理员权限
   init: (homestayId: string, data: { totalStock: number; startDate?: string; endDate?: string; price?: number }) =>
-    fetchApi<InitStockResult>(`/homestays/${homestayId}/init-stock`, { 
+    fetchAdminApi<InitStockResult>(`/homestays/${homestayId}/init-stock`, { 
       method: 'POST', 
       body: JSON.stringify(data) 
     }),
   update: (homestayId: string, date: string, data: { totalStock?: number; price?: number }) =>
-    fetchApi<StockDayInfo>(`/homestays/${homestayId}/stock/${date}`, {
+    fetchAdminApi<StockDayInfo>(`/homestays/${homestayId}/stock/${date}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   batchUpdate: (homestayId: string, data: { dates: string[]; totalStock: number; price?: number }) =>
-    fetchApi<InitStockResult>(`/homestays/${homestayId}/batch-stock`, {
+    fetchAdminApi<InitStockResult>(`/homestays/${homestayId}/batch-stock`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   cleanup: (homestayId: string) =>
-    fetchApi<{ count: number }>(`/homestays/${homestayId}/stock/cleanup`, {
+    fetchAdminApi<{ count: number }>(`/homestays/${homestayId}/stock/cleanup`, {
       method: 'DELETE',
     }),
 };

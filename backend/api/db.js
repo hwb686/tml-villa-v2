@@ -2139,6 +2139,55 @@ app.post('/api/homestays/:id/batch-stock', verifyAdmin, async (req, res) => {
   }
 });
 
+// GET /api/homestays/:id/unavailable-dates - 获取不可用日期（用于前端日历显示）
+app.get('/api/homestays/:id/unavailable-dates', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // 默认查询未来90天
+    const queryStartDate = startDate ? new Date(startDate) : new Date();
+    queryStartDate.setHours(0, 0, 0, 0);
+    
+    const queryEndDate = endDate ? new Date(endDate) : new Date(queryStartDate);
+    if (!endDate) {
+      queryEndDate.setDate(queryEndDate.getDate() + 90);
+    }
+    
+    // 获取所有库存记录
+    const stocks = await prisma.houseStock.findMany({
+      where: {
+        houseId: req.params.id,
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    // 找出可用库存为0的日期（满房或未设置库存）
+    const unavailableDates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 检查库存记录中可用为0的日期
+    for (const stock of stocks) {
+      const available = stock.totalStock - stock.bookedStock;
+      if (available <= 0) {
+        unavailableDates.push(stock.date.toISOString().split('T')[0]);
+      }
+    }
+    
+    // 也检查没有库存记录的日期（视为不可用）
+    // 只检查有库存记录的情况，未设置的日期前端会显示为"未设置"状态
+    
+    res.json({ code: 200, data: unavailableDates });
+  } catch (err) {
+    console.error('Error fetching unavailable dates:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // DELETE /api/homestays/:id/stock/cleanup - 清理过期库存（管理员）
 app.delete('/api/homestays/:id/stock/cleanup', verifyAdmin, async (req, res) => {
   try {
