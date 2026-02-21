@@ -614,6 +614,69 @@
 
 ---
 
+## 会话 12 - 2026-02-21
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F009 - 用户中心
+
+### 开始时状态:
+- 已完成功能: 9
+- 当前功能: F009
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 添加 Favorite 数据模型到 schema.prisma
+- [x] 实现后端 API:
+  - PUT /api/user/profile - 更新用户信息
+  - PUT /api/user/password - 修改密码
+  - GET /api/favorites - 获取收藏列表
+  - POST /api/favorites - 添加收藏
+  - DELETE /api/favorites/:houseId - 取消收藏
+  - POST /api/favorites/toggle - 切换收藏状态
+- [x] 创建前端页面:
+  - UserCenter.tsx - 用户中心主页面
+  - LoginPage.tsx - 登录/注册页面
+- [x] 更新 App.tsx 添加路由
+- [x] 更新 api.ts 添加 userApi 和 favoriteApi
+- [x] 更新 Navbar.tsx 添加用户登录状态显示
+
+### API 端点:
+| 端点 | 方法 | 描述 | 权限 |
+|------|------|------|------|
+| /api/user/profile | PUT | 更新用户信息 | 登录用户 |
+| /api/user/password | PUT | 修改密码 | 登录用户 |
+| /api/favorites | GET | 获取收藏列表 | 登录用户 |
+| /api/favorites | POST | 添加收藏 | 登录用户 |
+| /api/favorites/:houseId | DELETE | 取消收藏 | 登录用户 |
+| /api/favorites/toggle | POST | 切换收藏状态 | 登录用户 |
+
+### 测试结果:
+- [x] 用户注册成功 ✅
+- [x] 用户登录成功 ✅
+- [x] 获取用户信息成功 ✅
+- [x] 更新用户信息成功 ✅
+- [x] 修改密码成功 ✅
+- [x] 添加收藏成功 ✅
+- [x] 获取收藏列表成功 ✅
+- [x] 取消收藏成功 ✅
+- [x] 切换收藏状态成功 ✅
+
+### 修改的文件:
+- backend/prisma/schema.prisma (添加 Favorite 模型)
+- backend/api/db.js (添加用户和收藏相关 API)
+- app/src/pages/UserCenter.tsx (新建)
+- app/src/pages/LoginPage.tsx (新建)
+- app/src/App.tsx (添加路由)
+- app/src/services/api.ts (添加 userApi, favoriteApi)
+- app/src/sections/Navbar.tsx (添加用户状态显示)
+- feature_list.json (更新 F009 状态)
+
+### 结束时状态:
+- 已完成功能: 10
+- 下一个功能: F010 (评价系统)
+- 备注: 用户中心功能完整，包括个人信息管理、密码修改、收藏管理
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════

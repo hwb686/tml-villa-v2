@@ -2060,6 +2060,270 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   }
 });
 
+// User - Update Profile
+app.put('/api/user/profile', authMiddleware, async (req, res) => {
+  try {
+    const { username, phone, avatar } = req.body;
+    const userId = req.user.id;
+
+    // 检查用户名是否已被使用
+    if (username) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          username,
+          id: { not: userId },
+        },
+      });
+      if (existingUser) {
+        return res.status(400).json({ code: 400, msg: '该用户名已被使用' });
+      }
+    }
+
+    const updateData = {};
+    if (username) updateData.username = username;
+    if (phone !== undefined) updateData.phone = phone;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        avatar: true,
+        isHost: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      code: 200,
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        avatar: user.avatar,
+        isHost: user.isHost,
+        createdAt: user.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error updating user profile:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// User - Change Password
+app.put('/api/user/password', authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ code: 400, msg: '请提供当前密码和新密码' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ code: 400, msg: '新密码长度不能少于6位' });
+    }
+
+    // 获取用户
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+
+    // 验证当前密码
+    const isValid = await checkPassword(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(400).json({ code: 400, msg: '当前密码错误' });
+    }
+
+    // 更新密码
+    const hashedPassword = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ code: 200, msg: '密码修改成功' });
+  } catch (err) {
+    console.error('Error changing password:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// ============================================
+// Favorites APIs (收藏)
+// ============================================
+
+// GET /api/favorites - 获取用户收藏列表
+app.get('/api/favorites', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const favorites = await prisma.favorite.findMany({
+      where: { userId },
+      include: {
+        house: {
+          select: {
+            id: true,
+            title: true,
+            location: true,
+            price: true,
+            rating: true,
+            reviews: true,
+            images: true,
+            type: true,
+            guests: true,
+            bedrooms: true,
+            beds: true,
+            bathrooms: true,
+            hostName: true,
+            hostAvatar: true,
+            isSuperhost: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const data = favorites.map(f => ({
+      id: f.id,
+      createdAt: f.createdAt.toISOString(),
+      homestay: {
+        ...f.house,
+        host: {
+          name: f.house.hostName,
+          avatar: f.house.hostAvatar,
+          isSuperhost: f.house.isSuperhost,
+        },
+        isFavorite: true,
+      },
+    }));
+
+    res.json({ code: 200, data });
+  } catch (err) {
+    console.error('Error fetching favorites:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/favorites - 添加收藏
+app.post('/api/favorites', authMiddleware, async (req, res) => {
+  try {
+    const { houseId } = req.body;
+    const userId = req.user.id;
+
+    if (!houseId) {
+      return res.status(400).json({ code: 400, msg: '请提供民宿ID' });
+    }
+
+    // 检查民宿是否存在
+    const house = await prisma.homestay.findUnique({ where: { id: houseId } });
+    if (!house) {
+      return res.status(404).json({ code: 404, msg: '民宿不存在' });
+    }
+
+    // 检查是否已收藏
+    const existing = await prisma.favorite.findUnique({
+      where: { userId_houseId: { userId, houseId } },
+    });
+
+    if (existing) {
+      return res.status(400).json({ code: 400, msg: '已收藏该民宿' });
+    }
+
+    const favorite = await prisma.favorite.create({
+      data: { userId, houseId },
+    });
+
+    res.json({
+      code: 200,
+      data: {
+        id: favorite.id,
+        houseId,
+        createdAt: favorite.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error adding favorite:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/favorites/:houseId - 取消收藏
+app.delete('/api/favorites/:houseId', authMiddleware, async (req, res) => {
+  try {
+    const { houseId } = req.params;
+    const userId = req.user.id;
+
+    const favorite = await prisma.favorite.findUnique({
+      where: { userId_houseId: { userId, houseId } },
+    });
+
+    if (!favorite) {
+      return res.status(404).json({ code: 404, msg: '未收藏该民宿' });
+    }
+
+    await prisma.favorite.delete({
+      where: { id: favorite.id },
+    });
+
+    res.json({ code: 200, msg: '取消收藏成功' });
+  } catch (err) {
+    console.error('Error removing favorite:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/favorites/toggle - 切换收藏状态
+app.post('/api/favorites/toggle', authMiddleware, async (req, res) => {
+  try {
+    const { houseId } = req.body;
+    const userId = req.user.id;
+
+    if (!houseId) {
+      return res.status(400).json({ code: 400, msg: '请提供民宿ID' });
+    }
+
+    const existing = await prisma.favorite.findUnique({
+      where: { userId_houseId: { userId, houseId } },
+    });
+
+    if (existing) {
+      // 已收藏，取消收藏
+      await prisma.favorite.delete({
+        where: { id: existing.id },
+      });
+      res.json({ code: 200, data: { isFavorite: false, action: 'removed' } });
+    } else {
+      // 未收藏，添加收藏
+      const favorite = await prisma.favorite.create({
+        data: { userId, houseId },
+      });
+      res.json({
+        code: 200,
+        data: {
+          isFavorite: true,
+          action: 'added',
+          favoriteId: favorite.id,
+        },
+      });
+    }
+  } catch (err) {
+    console.error('Error toggling favorite:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Auth - Admin Login
 app.post('/api/admin/login', async (req, res) => {
   try {

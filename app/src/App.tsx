@@ -10,6 +10,8 @@ import HomestayDetail from '@/pages/HomestayDetail';
 import MealOrderPage from '@/pages/MealOrder';
 import CarRentalPage from '@/pages/CarRental';
 import TicketBookingPage from '@/pages/TicketBooking';
+import UserCenter from '@/pages/UserCenter';
+import LoginPage from '@/pages/LoginPage';
 import AdminApp from '@/AdminApp';
 import { homestayApi, type Homestay } from '@/services/api';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -111,6 +113,10 @@ export default function App() {
         return <CarRentalPage />;
       case '/ticket-booking':
         return <TicketBookingPage />;
+      case '/login':
+        return <LoginPage />;
+      case '/user':
+        return <UserCenter />;
       default:
         if (path.startsWith('/homestay/')) {
           return <HomestayDetail />;

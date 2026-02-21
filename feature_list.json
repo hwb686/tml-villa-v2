@@ -159,8 +159,9 @@
       "title": "用户中心",
       "description": "用户个人中心：订单、收藏、个人信息",
       "free_limit_impact": "无影响",
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已完成: 后端API包括用户信息更新、密码修改、收藏管理; 前端页面包括用户中心页面(UserCenter)、登录注册页面(LoginPage); Navbar组件添加用户登录状态显示; 添加Favorite数据模型"
     },
     {
       "id": "F010",

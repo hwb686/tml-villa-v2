@@ -9,29 +9,44 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  email        String   @unique
+  id           String     @id @default(cuid())
+  username     String     @unique
+  email        String     @unique
   phone        String?
   password     String
-  role         String   @default("USER")
-  status       String   @default("active")
+  role         String     @default("USER")
+  status       String     @default("active")
   avatar       String?
-  isHost       Boolean  @default(false)
-  createdAt    DateTime @default(now()) @map("create_time")
-  updatedAt    DateTime @updatedAt
+  isHost       Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @map("create_time")
+  updatedAt    DateTime   @updatedAt
   orders       Order[]
+  favorites    Favorite[]
   
   @@map("users")
 }
 
-model Homestay {
+// 用户收藏
+model Favorite {
   id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  houseId     String   @map("house_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house       Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, houseId])
+  @@map("favorites")
+}
+
+model Homestay {
+  id          String     @id @default(cuid())
   title       String
   location    String
   price       Int
-  rating      Float    @default(4.5)
-  reviews     Int      @default(0)
+  rating      Float      @default(4.5)
+  reviews     Int        @default(0)
   images      String[]
   type        String
   guests      Int
@@ -40,14 +55,15 @@ model Homestay {
   bathrooms   Int
   amenities   String[]
   description String?
-  isFavorite  Boolean  @default(false)
+  isFavorite  Boolean    @default(false)
   hostName    String
   hostAvatar  String
-  isSuperhost Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isSuperhost Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   orders      Order[]
   stocks      HouseStock[]
+  favorites   Favorite[]
   
   @@map("homestays")
 }

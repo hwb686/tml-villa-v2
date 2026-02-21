@@ -109,9 +109,38 @@ export const stockApi = {
 export const userApi = {
   login: (email: string, password: string) => fetchApi<{ token: string; user: User }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (data: RegisterData) => fetchApi<{ token: string; user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  getMe: () => fetchApi<User>('/users/me'),
+  getMe: () => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<User>('/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
   getAll: () => fetchApi<User[]>('/users'),
-  updateProfile: (data: Partial<User>) => fetchApi<User>('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
+  updateProfile: (data: Partial<User>) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<User>('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  changePassword: (currentPassword: string, newPassword: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<void>('/user/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
 };
 
 export const adminApi = {
@@ -389,4 +418,67 @@ export interface CreateDriverData { name: string; phone: string; avatar?: string
 export interface DriverScheduleData { [date: string]: { status: 'available' | 'booked' | 'off'; remark?: string; }; }
 export interface DriverCalendarDayData { available: Driver[]; booked: Driver[]; off: Driver[]; }
 export interface DriverCalendarData { [date: string]: DriverCalendarDayData; }
+
+// 收藏相关类型
+export interface Favorite {
+  id: string;
+  createdAt: string;
+  homestay: {
+    id: string;
+    title: string;
+    location: string;
+    price: number;
+    rating: number;
+    reviews: number;
+    images: string[];
+    type: string;
+    isFavorite: boolean;
+  };
+}
+
+// 收藏管理 API
+export const favoriteApi = {
+  getAll: () => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<Favorite[]>('/favorites', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  add: (houseId: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<{ id: string; houseId: string; createdAt: string }>('/favorites', {
+      method: 'POST',
+      body: JSON.stringify({ houseId }),
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  remove: (houseId: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<void>(`/favorites/${houseId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  toggle: (houseId: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<{ isFavorite: boolean; action: 'added' | 'removed'; favoriteId?: string }>('/favorites/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ houseId }),
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+};
+
 export { fetchApi };
