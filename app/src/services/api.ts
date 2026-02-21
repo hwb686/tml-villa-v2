@@ -692,4 +692,113 @@ export const notificationApi = {
   },
 };
 
+// 员工类型定义
+export interface Staff {
+  id: string;
+  name: string;
+  phone: string;
+  avatar?: string;
+  staffType: 'cleaner' | 'receptionist' | 'admin' | 'maintenance' | 'other';
+  status: 'active' | 'inactive' | 'on_leave';
+  dailyWage: number;
+  idNumber?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  hireDate?: string;
+  remark?: string;
+  scheduleCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateStaffData {
+  name: string;
+  phone: string;
+  avatar?: string;
+  staffType: 'cleaner' | 'receptionist' | 'admin' | 'maintenance' | 'other';
+  dailyWage?: number;
+  idNumber?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  hireDate?: string;
+  remark?: string;
+}
+
+export interface StaffSchedule {
+  id: string;
+  date: string;
+  status: 'scheduled' | 'working' | 'completed' | 'absent' | 'off';
+  workHours?: number;
+  remark?: string;
+}
+
+export interface StaffCalendarData {
+  [date: string]: {
+    scheduled: Array<{ id: string; name: string; phone: string; staffType: string; workHours?: number }>;
+    working: Array<{ id: string; name: string; phone: string; staffType: string; workHours?: number }>;
+    completed: Array<{ id: string; name: string; phone: string; staffType: string; workHours?: number }>;
+    absent: Array<{ id: string; name: string; phone: string; staffType: string; workHours?: number }>;
+    off: Array<{ id: string; name: string; phone: string; staffType: string; workHours?: number }>;
+  };
+}
+
+// 员工 API
+export const staffApi = {
+  // 获取员工列表
+  getAll: (params?: { staffType?: string; status?: string; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.staffType) queryParams.append('staffType', params.staffType);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    return fetchApi<Staff[]>(`/staffs?${queryParams.toString()}`);
+  },
+  
+  // 获取员工详情
+  getById: (id: string) => fetchApi<Staff>(`/staffs/${id}`),
+  
+  // 创建员工
+  create: (data: CreateStaffData) => fetchAdminApi<Staff>('/staffs', { 
+    method: 'POST', 
+    body: JSON.stringify(data) 
+  }),
+  
+  // 更新员工
+  update: (id: string, data: Partial<CreateStaffData> & { status?: string }) => 
+    fetchAdminApi<Staff>(`/staffs/${id}`, { 
+      method: 'PUT', 
+      body: JSON.stringify(data) 
+    }),
+  
+  // 删除员工
+  delete: (id: string) => fetchAdminApi<void>(`/staffs/${id}`, { method: 'DELETE' }),
+  
+  // 获取员工排班
+  getSchedule: (staffId: string, params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<StaffSchedule[]>(`/staffs/${staffId}/schedule?${queryParams.toString()}`);
+  },
+  
+  // 设置员工排班
+  setSchedule: (staffId: string, data: { schedules: Array<{ date: string; status: string; workHours?: number; remark?: string }> }) =>
+    fetchAdminApi<{ count: number }>(`/staffs/${staffId}/schedule`, { 
+      method: 'POST', 
+      body: JSON.stringify(data) 
+    }),
+  
+  // 获取员工排班日历
+  getCalendar: (params?: { startDate?: string; endDate?: string; month?: string; staffType?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.month) queryParams.append('month', params.month);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.staffType) queryParams.append('staffType', params.staffType);
+    return fetchAdminApi<StaffCalendarData>(`/staff-schedules/calendar?${queryParams.toString()}`);
+  },
+  
+  // 获取员工类型
+  getTypes: () => fetchApi<Array<{ value: string; label: string; labelEn: string }>>('/staffs/types'),
+};
+
 export { fetchApi };

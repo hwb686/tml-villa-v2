@@ -223,9 +223,23 @@
       "title": "员工管理",
       "description": "管理司机、清洁、前台等员工",
       "free_limit_impact": "无影响",
-      "status": "missing",
-      "passes": false,
-      "notes": "自有业务特有需求"
+      "status": "done",
+      "passes": true,
+      "notes": "已于 2026-02-21 完成。后端API包括员工CRUD、员工类型列表、员工排班日历；前端页面包括员工管理(Staffs)和员工排班(StaffSchedule)；支持5种员工类型(清洁工、前台、管理员、维护人员、其他)；排班状态包括已排班、工作中、已完成、缺勤、休息",
+      "steps": [
+        "创建 Staff 和 StaffSchedule 数据模型",
+        "实现员工 CRUD API",
+        "实现员工排班日历 API",
+        "创建员工管理前端页面",
+        "创建员工排班日历前端页面"
+      ],
+      "acceptance_criteria": [
+        "员工列表支持按类型筛选",
+        "员工列表支持按状态筛选",
+        "员工列表支持搜索",
+        "员工排班日历视图",
+        "管理员可添加/编辑/删除员工"
+      ]
     },
     {
       "id": "F013",

@@ -1853,6 +1853,431 @@ app.get('/api/driver-schedules/calendar', verifyAdmin, async (req, res) => {
   }
 });
 
+// =====================================================
+// 员工管理 API (Staff Management)
+// =====================================================
+
+// GET /api/staffs - 获取员工列表
+app.get('/api/staffs', async (req, res) => {
+  try {
+    const { staffType, status, search } = req.query;
+    
+    const where = {};
+    
+    if (staffType) {
+      where.staffType = staffType;
+    }
+    
+    if (status) {
+      where.status = status;
+    }
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+      ];
+    }
+    
+    const staffs = await prisma.staff.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { schedules: true },
+        },
+      },
+    });
+    
+    const formatted = staffs.map(s => ({
+      id: s.id,
+      name: s.name,
+      phone: s.phone,
+      avatar: s.avatar,
+      staffType: s.staffType,
+      status: s.status,
+      dailyWage: s.dailyWage,
+      idNumber: s.idNumber,
+      emergencyContact: s.emergencyContact,
+      emergencyPhone: s.emergencyPhone,
+      hireDate: s.hireDate,
+      remark: s.remark,
+      scheduleCount: s._count.schedules,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
+    
+    res.json({ code: 200, data: formatted });
+  } catch (err) {
+    console.error('Error fetching staffs:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/staffs/types - 获取员工类型列表（必须在 :id 路由之前）
+app.get('/api/staffs/types', (req, res) => {
+  res.json({
+    code: 200,
+    data: [
+      { value: 'cleaner', label: '清洁工', labelEn: 'Cleaner' },
+      { value: 'receptionist', label: '前台', labelEn: 'Receptionist' },
+      { value: 'admin', label: '管理员', labelEn: 'Administrator' },
+      { value: 'maintenance', label: '维护人员', labelEn: 'Maintenance' },
+      { value: 'other', label: '其他', labelEn: 'Other' },
+    ],
+  });
+});
+
+// GET /api/staffs/:id - 获取员工详情
+app.get('/api/staffs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const staff = await prisma.staff.findUnique({
+      where: { id },
+      include: {
+        schedules: {
+          orderBy: { date: 'desc' },
+          take: 30,
+        },
+      },
+    });
+    
+    if (!staff) {
+      return res.status(404).json({ code: 404, msg: '员工不存在' });
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        id: staff.id,
+        name: staff.name,
+        phone: staff.phone,
+        avatar: staff.avatar,
+        staffType: staff.staffType,
+        status: staff.status,
+        dailyWage: staff.dailyWage,
+        idNumber: staff.idNumber,
+        emergencyContact: staff.emergencyContact,
+        emergencyPhone: staff.emergencyPhone,
+        hireDate: staff.hireDate,
+        remark: staff.remark,
+        schedules: staff.schedules.map(s => ({
+          id: s.id,
+          date: s.date,
+          status: s.status,
+          workHours: s.workHours,
+          remark: s.remark,
+        })),
+        createdAt: staff.createdAt,
+        updatedAt: staff.updatedAt,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching staff:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/staffs - 创建员工（管理员）
+app.post('/api/staffs', verifyAdmin, async (req, res) => {
+  try {
+    const {
+      name,
+      phone,
+      avatar,
+      staffType,
+      dailyWage,
+      idNumber,
+      emergencyContact,
+      emergencyPhone,
+      hireDate,
+      remark,
+    } = req.body;
+    
+    if (!name || !phone || !staffType) {
+      return res.status(400).json({ code: 400, msg: '姓名、电话和员工类型为必填项' });
+    }
+    
+    const validTypes = ['cleaner', 'receptionist', 'admin', 'maintenance', 'other'];
+    if (!validTypes.includes(staffType)) {
+      return res.status(400).json({ code: 400, msg: '无效的员工类型' });
+    }
+    
+    const staff = await prisma.staff.create({
+      data: {
+        name,
+        phone,
+        avatar: avatar || null,
+        staffType,
+        status: 'active',
+        dailyWage: dailyWage || 0,
+        idNumber: idNumber || null,
+        emergencyContact: emergencyContact || null,
+        emergencyPhone: emergencyPhone || null,
+        hireDate: hireDate ? new Date(hireDate) : null,
+        remark: remark || null,
+      },
+    });
+    
+    res.json({ code: 200, msg: '创建成功', data: staff });
+  } catch (err) {
+    console.error('Error creating staff:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/staffs/:id - 更新员工（管理员）
+app.put('/api/staffs/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      phone,
+      avatar,
+      staffType,
+      status,
+      dailyWage,
+      idNumber,
+      emergencyContact,
+      emergencyPhone,
+      hireDate,
+      remark,
+    } = req.body;
+    
+    const existing = await prisma.staff.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ code: 404, msg: '员工不存在' });
+    }
+    
+    const staff = await prisma.staff.update({
+      where: { id },
+      data: {
+        name: name || existing.name,
+        phone: phone || existing.phone,
+        avatar: avatar !== undefined ? avatar : existing.avatar,
+        staffType: staffType || existing.staffType,
+        status: status || existing.status,
+        dailyWage: dailyWage !== undefined ? dailyWage : existing.dailyWage,
+        idNumber: idNumber !== undefined ? idNumber : existing.idNumber,
+        emergencyContact: emergencyContact !== undefined ? emergencyContact : existing.emergencyContact,
+        emergencyPhone: emergencyPhone !== undefined ? emergencyPhone : existing.emergencyPhone,
+        hireDate: hireDate !== undefined ? (hireDate ? new Date(hireDate) : null) : existing.hireDate,
+        remark: remark !== undefined ? remark : existing.remark,
+      },
+    });
+    
+    res.json({ code: 200, msg: '更新成功', data: staff });
+  } catch (err) {
+    console.error('Error updating staff:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/staffs/:id - 删除员工（管理员）
+app.delete('/api/staffs/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const existing = await prisma.staff.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ code: 404, msg: '员工不存在' });
+    }
+    
+    await prisma.staff.delete({ where: { id } });
+    
+    res.json({ code: 200, msg: '删除成功' });
+  } catch (err) {
+    console.error('Error deleting staff:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/staffs/:id/schedule - 获取员工排班
+app.get('/api/staffs/:id/schedule', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query;
+    
+    const staff = await prisma.staff.findUnique({ where: { id } });
+    if (!staff) {
+      return res.status(404).json({ code: 404, msg: '员工不存在' });
+    }
+    
+    let queryStartDate, queryEndDate;
+    
+    if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      queryStartDate = new Date();
+      queryStartDate.setHours(0, 0, 0, 0);
+      queryEndDate = new Date(queryStartDate);
+      queryEndDate.setDate(queryEndDate.getDate() + 30);
+    }
+    
+    const schedules = await prisma.staffSchedule.findMany({
+      where: {
+        staffId: id,
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    const formatted = schedules.map(s => ({
+      id: s.id,
+      date: s.date,
+      status: s.status,
+      workHours: s.workHours,
+      remark: s.remark,
+    }));
+    
+    res.json({ code: 200, data: formatted });
+  } catch (err) {
+    console.error('Error fetching staff schedule:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/staffs/:id/schedule - 批量设置员工排班（管理员）
+app.post('/api/staffs/:id/schedule', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { schedules } = req.body; // [{ date, status, workHours, remark }]
+    
+    const staff = await prisma.staff.findUnique({ where: { id } });
+    if (!staff) {
+      return res.status(404).json({ code: 404, msg: '员工不存在' });
+    }
+    
+    if (!schedules || !Array.isArray(schedules) || schedules.length === 0) {
+      return res.status(400).json({ code: 400, msg: '请提供排班数据' });
+    }
+    
+    const validStatuses = ['scheduled', 'working', 'completed', 'absent', 'off'];
+    
+    let count = 0;
+    for (const item of schedules) {
+      if (!item.date || !item.status) continue;
+      if (!validStatuses.includes(item.status)) continue;
+      
+      const scheduleDate = new Date(item.date);
+      
+      await prisma.staffSchedule.upsert({
+        where: {
+          staffId_date: {
+            staffId: id,
+            date: scheduleDate,
+          },
+        },
+        update: {
+          status: item.status,
+          workHours: item.workHours || null,
+          remark: item.remark || null,
+        },
+        create: {
+          staffId: id,
+          date: scheduleDate,
+          status: item.status,
+          workHours: item.workHours || null,
+          remark: item.remark || null,
+        },
+      });
+      count++;
+    }
+    
+    res.json({
+      code: 200,
+      msg: `成功设置 ${count} 天的排班`,
+      data: { count },
+    });
+  } catch (err) {
+    console.error('Error setting staff schedule:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/staff-schedules/calendar - 获取员工排班日历（管理员）
+app.get('/api/staff-schedules/calendar', verifyAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate, month, staffType } = req.query;
+    
+    let queryStartDate, queryEndDate;
+    
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      queryStartDate = new Date(year, mon - 1, 1);
+      queryEndDate = new Date(year, mon, 0);
+    } else if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      queryStartDate = new Date();
+      queryStartDate.setHours(0, 0, 0, 0);
+      queryEndDate = new Date(queryStartDate);
+      queryEndDate.setDate(queryEndDate.getDate() + 30);
+    }
+    
+    // 获取所有活跃员工
+    const staffWhere = { status: 'active' };
+    if (staffType) {
+      staffWhere.staffType = staffType;
+    }
+    
+    const staffs = await prisma.staff.findMany({
+      where: staffWhere,
+    });
+    
+    // 获取日期范围内的所有排班
+    const schedules = await prisma.staffSchedule.findMany({
+      where: {
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      include: {
+        staff: true,
+      },
+    });
+    
+    // 按日期组织数据
+    const calendar = {};
+    for (const schedule of schedules) {
+      const dateStr = schedule.date.toISOString().split('T')[0];
+      if (!calendar[dateStr]) {
+        calendar[dateStr] = {
+          scheduled: [],
+          working: [],
+          completed: [],
+          absent: [],
+          off: [],
+        };
+      }
+      
+      const staffInfo = {
+        id: schedule.staff.id,
+        name: schedule.staff.name,
+        phone: schedule.staff.phone,
+        staffType: schedule.staff.staffType,
+        workHours: schedule.workHours,
+      };
+      
+      if (calendar[dateStr][schedule.status]) {
+        calendar[dateStr][schedule.status].push(staffInfo);
+      }
+    }
+    
+    res.json({ code: 200, data: calendar });
+  } catch (err) {
+    console.error('Error fetching staff calendar:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Finance
 app.get('/api/finance/overview', async (req, res) => {
   try {

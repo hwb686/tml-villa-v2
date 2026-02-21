@@ -11,6 +11,8 @@ import CarConfigs from '@/pages/CarConfigs';
 import CarStockManagement from '@/pages/CarStockManagement';
 import Drivers from '@/pages/Drivers';
 import DriverSchedule from '@/pages/DriverSchedule';
+import Staffs from '@/pages/Staffs';
+import StaffSchedule from '@/pages/StaffSchedule';
 import TicketOrders from '@/pages/TicketOrders';
 import TicketConfigs from '@/pages/TicketConfigs';
 import StockManagement from '@/pages/StockManagement';
@@ -84,6 +86,10 @@ case 'car-rentals':
         return <Drivers />;
       case 'driver-schedule':
         return <DriverSchedule />;
+      case 'staffs':
+        return <Staffs />;
+      case 'staff-schedule':
+        return <StaffSchedule />;
       case 'ticket-orders':
         return <TicketOrders />;
       case 'ticket-configs':

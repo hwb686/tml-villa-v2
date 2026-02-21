@@ -235,12 +235,54 @@ model DriverSchedule {
   remark        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+   
   driver        Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  
+   
   @@unique([driverId, date])
   @@index([date, status])
   @@map("driver_schedules")
+}
+
+// 员工信息（司机之外的员工：清洁工、前台、管理员等）
+model Staff {
+  id            String   @id @default(cuid())
+  name          String   // 员工姓名
+  phone         String   // 联系电话
+  avatar        String?  // 头像
+  staffType     String   @map("staff_type") // cleaner, receptionist, admin, maintenance, other
+  status        String   @default("active") // active, inactive, on_leave
+  dailyWage     Int      @default(0) @map("daily_wage") // 日薪
+  idNumber      String?  @map("id_number") // 身份证号
+  emergencyContact String? @map("emergency_contact") // 紧急联系人
+  emergencyPhone String? @map("emergency_phone") // 紧急联系电话
+  hireDate      DateTime? @map("hire_date") // 入职日期
+  remark        String?  // 备注
+  createdAt     DateTime @default(now()) @map("create_time")
+  updatedAt     DateTime @updatedAt
+   
+  schedules     StaffSchedule[]
+   
+  @@index([staffType])
+  @@index([status])
+  @@map("staffs")
+}
+
+// 员工排班（日期维度）
+model StaffSchedule {
+  id            String   @id @default(cuid())
+  staffId       String   @map("staff_id")
+  date          DateTime @db.Date
+  status        String   @default("scheduled") // scheduled, working, completed, absent, off
+  workHours     Int?     @map("work_hours") // 工作时长（小时）
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+   
+  staff         Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+   
+  @@unique([staffId, date])
+  @@index([date, status])
+  @@map("staff_schedules")
 }
 
 model Category {

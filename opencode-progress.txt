@@ -821,6 +821,94 @@
 
 ---
 
+## 会话 14 - 2026-02-21
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F012 - 员工管理
+
+### 开始时状态:
+- 已完成功能: 12
+- 当前功能: F012
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 创建 Staff 和 StaffSchedule 数据模型
+  - Staff: 员工基本信息（姓名、电话、类型、状态、日薪等）
+  - StaffSchedule: 员工排班（日期、状态、工作时长）
+  - 支持5种员工类型: cleaner, receptionist, admin, maintenance, other
+- [x] 实现后端 API
+  - GET/POST /api/staffs - 员工列表/创建
+  - GET/PUT/DELETE /api/staffs/:id - 员工详情/更新/删除
+  - GET /api/staffs/types - 员工类型列表
+  - GET/POST /api/staffs/:id/schedule - 员工排班
+  - GET /api/staff-schedules/calendar - 排班日历
+- [x] 创建前端页面
+  - Staffs.tsx - 员工管理页面（列表、搜索、筛选、新增、编辑、删除）
+  - StaffSchedule.tsx - 员工排班日历页面（月视图、日期详情）
+- [x] 更新 AdminApp.tsx 添加路由
+- [x] 更新 Sidebar.tsx 添加员工管理菜单
+
+### API 端点:
+| 端点 | 方法 | 描述 | 权限 |
+|------|------|------|------|
+| /api/staffs | GET | 获取员工列表 | 公开 |
+| /api/staffs | POST | 创建员工 | 管理员 |
+| /api/staffs/:id | GET | 获取员工详情 | 公开 |
+| /api/staffs/:id | PUT | 更新员工 | 管理员 |
+| /api/staffs/:id | DELETE | 删除员工 | 管理员 |
+| /api/staffs/types | GET | 获取员工类型 | 公开 |
+| /api/staffs/:id/schedule | GET | 获取员工排班 | 公开 |
+| /api/staffs/:id/schedule | POST | 设置员工排班 | 管理员 |
+| /api/staff-schedules/calendar | GET | 排班日历 | 管理员 |
+
+### 员工类型:
+| 类型 | 标签 | 英文 |
+|------|------|------|
+| cleaner | 清洁工 | Cleaner |
+| receptionist | 前台 | Receptionist |
+| admin | 管理员 | Administrator |
+| maintenance | 维护人员 | Maintenance |
+| other | 其他 | Other |
+
+### 排班状态:
+| 状态 | 标签 | 颜色 |
+|------|------|------|
+| scheduled | 已排班 | 蓝色 |
+| working | 工作中 | 绿色 |
+| completed | 已完成 | 灰色 |
+| absent | 缺勤 | 红色 |
+| off | 休息 | 黄色 |
+
+### 测试结果:
+- [x] 员工列表 API 成功 ✅
+- [x] 员工类型 API 成功 ✅
+- [x] 创建员工 API 成功 ✅
+- [x] TypeScript 编译通过 ✅
+- [x] Playwright 端到端测试通过 ✅
+
+### 修改的文件:
+- backend/prisma/schema.prisma (添加 Staff, StaffSchedule 模型)
+- backend/api/db.js (添加员工管理 API)
+- app/src/pages/Staffs.tsx (新建)
+- app/src/pages/StaffSchedule.tsx (新建)
+- app/src/services/api.ts (添加 staffApi)
+- app/src/AdminApp.tsx (添加路由)
+- app/src/components/layout/Sidebar.tsx (添加菜单)
+- feature_list.json (更新 F012 状态)
+
+### 技术要点:
+- 员工类型使用枚举: cleaner, receptionist, admin, maintenance, other
+- 排班状态: scheduled, working, completed, absent, off
+- 排班日历按月查询，支持按员工类型筛选
+- 员工状态: active, inactive, on_leave
+- 员工信息包含紧急联系人、入职日期等
+
+### 结束时状态:
+- 已完成功能: 13
+- 下一个功能: F013 (成本核算)
+- 备注: 员工管理功能完整，包括员工CRUD、类型管理、排班日历
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════
