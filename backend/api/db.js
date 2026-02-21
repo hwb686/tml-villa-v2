@@ -52,6 +52,26 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// 验证管理员权限的中间件
+const verifyAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ code: 401, msg: '未授权访问' });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ code: 403, msg: '需要管理员权限' });
+    }
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ code: 401, msg: '无效的Token' });
+  }
+};
+
 const app = express();
 
 // CORS middleware
@@ -1169,6 +1189,670 @@ app.put('/api/car-rentals/:id/status', async (req, res) => {
   }
 });
 
+// ============================================
+// Car Stock APIs (车辆库存管理)
+// ============================================
+
+// GET /api/car-configs/:id/stock - 获取车辆库存信息
+app.get('/api/car-configs/:id/stock', async (req, res) => {
+  try {
+    const { startDate, endDate, month } = req.query;
+    
+    let queryStartDate, queryEndDate;
+    
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      queryStartDate = new Date(year, mon - 1, 1);
+      queryEndDate = new Date(year, mon, 0);
+    } else if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      return res.status(400).json({ code: 400, msg: '请提供 month 或 startDate/endDate 参数' });
+    }
+    
+    const stocks = await prisma.carStock.findMany({
+      where: {
+        carConfigId: req.params.id,
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    const data = {};
+    for (const s of stocks) {
+      const dateStr = s.date.toISOString().split('T')[0];
+      data[dateStr] = {
+        total: s.totalStock,
+        booked: s.bookedStock,
+        available: s.totalStock - s.bookedStock,
+        price: s.price,
+      };
+    }
+    
+    res.json({ code: 200, data });
+  } catch (err) {
+    console.error('Error fetching car stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/car-configs/:id/init-stock - 初始化车辆库存（管理员）
+app.post('/api/car-configs/:id/init-stock', verifyAdmin, async (req, res) => {
+  try {
+    const { totalStock, startDate, endDate, price } = req.body;
+    
+    if (!totalStock || totalStock < 1) {
+      return res.status(400).json({ code: 400, msg: '库存数量必须大于0' });
+    }
+    
+    let queryStartDate, queryEndDate;
+    if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      queryStartDate = new Date();
+      queryStartDate.setHours(0, 0, 0, 0);
+      queryEndDate = new Date(queryStartDate);
+      queryEndDate.setDate(queryEndDate.getDate() + 90);
+    }
+    
+    const stocks = [];
+    const current = new Date(queryStartDate);
+    while (current <= queryEndDate) {
+      stocks.push({
+        carConfigId: req.params.id,
+        date: new Date(current),
+        totalStock,
+        bookedStock: 0,
+        price: price || null,
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    
+    let count = 0;
+    for (const stock of stocks) {
+      await prisma.carStock.upsert({
+        where: { carConfigId_date: { carConfigId: stock.carConfigId, date: stock.date } },
+        update: { totalStock: stock.totalStock, price: stock.price },
+        create: stock,
+      });
+      count++;
+    }
+    
+    res.json({ 
+      code: 200, 
+      msg: `成功初始化 ${count} 天的库存`,
+      data: { count }
+    });
+  } catch (err) {
+    console.error('Error initializing car stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/car-configs/:id/stock/:date - 调整单日库存（管理员）
+app.put('/api/car-configs/:id/stock/:date', verifyAdmin, async (req, res) => {
+  try {
+    const { totalStock, price } = req.body;
+    const date = new Date(req.params.date);
+    
+    if (isNaN(date.getTime())) {
+      return res.status(400).json({ code: 400, msg: '无效的日期格式' });
+    }
+    
+    let stock = await prisma.carStock.findUnique({
+      where: { carConfigId_date: { carConfigId: req.params.id, date } },
+    });
+    
+    if (stock) {
+      const updateData = {};
+      if (totalStock !== undefined) {
+        if (totalStock < stock.bookedStock) {
+          return res.status(400).json({ 
+            code: 400, 
+            msg: `总库存不能小于已预订数量 (${stock.bookedStock})` 
+          });
+        }
+        updateData.totalStock = totalStock;
+      }
+      if (price !== undefined) {
+        updateData.price = price;
+      }
+      
+      stock = await prisma.carStock.update({
+        where: { carConfigId_date: { carConfigId: req.params.id, date } },
+        data: updateData,
+      });
+    } else {
+      stock = await prisma.carStock.create({
+        data: {
+          carConfigId: req.params.id,
+          date,
+          totalStock: totalStock || 1,
+          bookedStock: 0,
+          price: price || null,
+        },
+      });
+    }
+    
+    res.json({
+      code: 200,
+      msg: '库存更新成功',
+      data: {
+        date: stock.date.toISOString().split('T')[0],
+        total: stock.totalStock,
+        booked: stock.bookedStock,
+        available: stock.totalStock - stock.bookedStock,
+        price: stock.price,
+      },
+    });
+  } catch (err) {
+    console.error('Error updating car stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/car-configs/:id/batch-stock - 批量设置库存（管理员）
+app.post('/api/car-configs/:id/batch-stock', verifyAdmin, async (req, res) => {
+  try {
+    const { dates, totalStock, price } = req.body;
+    
+    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({ code: 400, msg: '请提供日期数组' });
+    }
+    
+    if (!totalStock || totalStock < 1) {
+      return res.status(400).json({ code: 400, msg: '库存数量必须大于0' });
+    }
+    
+    let count = 0;
+    for (const dateStr of dates) {
+      const date = new Date(dateStr);
+      
+      await prisma.carStock.upsert({
+        where: { carConfigId_date: { carConfigId: req.params.id, date } },
+        update: { 
+          totalStock,
+          ...(price !== undefined && { price }),
+        },
+        create: {
+          carConfigId: req.params.id,
+          date,
+          totalStock,
+          bookedStock: 0,
+          price: price || null,
+        },
+      });
+      count++;
+    }
+    
+    res.json({
+      code: 200,
+      msg: `成功设置 ${count} 天的库存`,
+      data: { count },
+    });
+  } catch (err) {
+    console.error('Error batch updating car stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/car-configs/:id/unavailable-dates - 获取不可用日期
+app.get('/api/car-configs/:id/unavailable-dates', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const queryStartDate = startDate ? new Date(startDate) : new Date();
+    queryStartDate.setHours(0, 0, 0, 0);
+    
+    const queryEndDate = endDate ? new Date(endDate) : new Date(queryStartDate);
+    if (!endDate) {
+      queryEndDate.setDate(queryEndDate.getDate() + 90);
+    }
+    
+    const stocks = await prisma.carStock.findMany({
+      where: {
+        carConfigId: req.params.id,
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    const unavailableDates = [];
+    for (const stock of stocks) {
+      const available = stock.totalStock - stock.bookedStock;
+      if (available <= 0) {
+        unavailableDates.push(stock.date.toISOString().split('T')[0]);
+      }
+    }
+    
+    res.json({ code: 200, data: unavailableDates });
+  } catch (err) {
+    console.error('Error fetching unavailable dates:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/car-configs/:id/stock/cleanup - 清理过期库存（管理员）
+app.delete('/api/car-configs/:id/stock/cleanup', verifyAdmin, async (req, res) => {
+  try {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - 1);
+    
+    const result = await prisma.carStock.deleteMany({
+      where: {
+        carConfigId: req.params.id,
+        date: { lt: cutoff },
+      },
+    });
+    
+    res.json({
+      code: 200,
+      msg: `已清理 ${result.count} 条过期库存`,
+      data: { count: result.count },
+    });
+  } catch (err) {
+    console.error('Error cleaning up car stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// ============================================
+// Driver APIs (司机管理)
+// ============================================
+
+// GET /api/drivers - 获取所有司机
+app.get('/api/drivers', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const where = {};
+    if (status) where.status = status;
+    
+    const drivers = await prisma.driver.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const formatted = drivers.map(d => ({
+      id: d.id,
+      name: d.name,
+      phone: d.phone,
+      avatar: d.avatar,
+      licenseNumber: d.licenseNumber,
+      status: d.status,
+      dailyFee: d.dailyFee,
+      remark: d.remark,
+      createdAt: d.createdAt.toISOString(),
+    }));
+    
+    res.json({ code: 200, data: formatted });
+  } catch (err) {
+    console.error('Error fetching drivers:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/drivers/:id - 获取单个司机
+app.get('/api/drivers/:id', async (req, res) => {
+  try {
+    const driver = await prisma.driver.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!driver) {
+      return res.status(404).json({ code: 404, msg: '司机不存在' });
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        id: driver.id,
+        name: driver.name,
+        phone: driver.phone,
+        avatar: driver.avatar,
+        licenseNumber: driver.licenseNumber,
+        status: driver.status,
+        dailyFee: driver.dailyFee,
+        remark: driver.remark,
+        createdAt: driver.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching driver:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/drivers - 创建司机（管理员）
+app.post('/api/drivers', verifyAdmin, async (req, res) => {
+  try {
+    const { name, phone, avatar, licenseNumber, status, dailyFee, remark } = req.body;
+    
+    if (!name || !phone) {
+      return res.status(400).json({ code: 400, msg: '姓名和电话为必填项' });
+    }
+    
+    const driver = await prisma.driver.create({
+      data: {
+        name,
+        phone,
+        avatar: avatar || null,
+        licenseNumber: licenseNumber || null,
+        status: status || 'active',
+        dailyFee: dailyFee || 0,
+        remark: remark || null,
+      },
+    });
+    
+    res.json({ code: 200, msg: '创建成功', data: driver });
+  } catch (err) {
+    console.error('Error creating driver:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/drivers/:id - 更新司机（管理员）
+app.put('/api/drivers/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { name, phone, avatar, licenseNumber, status, dailyFee, remark } = req.body;
+    
+    const driver = await prisma.driver.update({
+      where: { id: req.params.id },
+      data: {
+        name,
+        phone,
+        avatar,
+        licenseNumber,
+        status,
+        dailyFee: dailyFee !== undefined ? dailyFee : undefined,
+        remark,
+      },
+    });
+    
+    res.json({ code: 200, msg: '更新成功', data: driver });
+  } catch (err) {
+    console.error('Error updating driver:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/drivers/:id - 删除司机（管理员）
+app.delete('/api/drivers/:id', verifyAdmin, async (req, res) => {
+  try {
+    await prisma.driver.delete({
+      where: { id: req.params.id },
+    });
+    
+    res.json({ code: 200, msg: '删除成功' });
+  } catch (err) {
+    console.error('Error deleting driver:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// ============================================
+// Driver Schedule APIs (司机排班)
+// ============================================
+
+// GET /api/drivers/:id/schedule - 获取司机排班
+app.get('/api/drivers/:id/schedule', async (req, res) => {
+  try {
+    const { startDate, endDate, month } = req.query;
+    
+    let queryStartDate, queryEndDate;
+    
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      queryStartDate = new Date(year, mon - 1, 1);
+      queryEndDate = new Date(year, mon, 0);
+    } else if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      queryStartDate = new Date();
+      queryStartDate.setHours(0, 0, 0, 0);
+      queryEndDate = new Date(queryStartDate);
+      queryEndDate.setDate(queryEndDate.getDate() + 30);
+    }
+    
+    const schedules = await prisma.driverSchedule.findMany({
+      where: {
+        driverId: req.params.id,
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    const data = {};
+    for (const s of schedules) {
+      const dateStr = s.date.toISOString().split('T')[0];
+      data[dateStr] = {
+        status: s.status,
+        remark: s.remark,
+      };
+    }
+    
+    res.json({ code: 200, data });
+  } catch (err) {
+    console.error('Error fetching driver schedule:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/drivers/:id/schedule - 设置司机排班（管理员）
+app.post('/api/drivers/:id/schedule', verifyAdmin, async (req, res) => {
+  try {
+    const { dates, status, remark } = req.body;
+    
+    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({ code: 400, msg: '请提供日期数组' });
+    }
+    
+    if (!status) {
+      return res.status(400).json({ code: 400, msg: '请提供状态' });
+    }
+    
+    let count = 0;
+    for (const dateStr of dates) {
+      const date = new Date(dateStr);
+      
+      await prisma.driverSchedule.upsert({
+        where: { driverId_date: { driverId: req.params.id, date } },
+        update: { 
+          status,
+          remark: remark || null,
+        },
+        create: {
+          driverId: req.params.id,
+          date,
+          status,
+          remark: remark || null,
+        },
+      });
+      count++;
+    }
+    
+    res.json({
+      code: 200,
+      msg: `成功设置 ${count} 天的排班`,
+      data: { count },
+    });
+  } catch (err) {
+    console.error('Error setting driver schedule:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/driver-schedules/available - 获取某日期可用司机
+app.get('/api/driver-schedules/available', async (req, res) => {
+  try {
+    const { date } = req.query;
+    
+    if (!date) {
+      return res.status(400).json({ code: 400, msg: '请提供日期' });
+    }
+    
+    const queryDate = new Date(date);
+    
+    // 获取所有活跃司机
+    const activeDrivers = await prisma.driver.findMany({
+      where: { status: 'active' },
+    });
+    
+    // 获取当天已排班的司机
+    const bookedSchedules = await prisma.driverSchedule.findMany({
+      where: {
+        date: queryDate,
+        status: 'booked',
+      },
+    });
+    
+    const bookedDriverIds = new Set(bookedSchedules.map(s => s.driverId));
+    
+    // 获取当天设置为休息的司机
+    const offSchedules = await prisma.driverSchedule.findMany({
+      where: {
+        date: queryDate,
+        status: 'off',
+      },
+    });
+    
+    const offDriverIds = new Set(offSchedules.map(s => s.driverId));
+    
+    // 过滤出可用司机
+    const availableDrivers = activeDrivers.filter(d => 
+      !bookedDriverIds.has(d.id) && !offDriverIds.has(d.id)
+    );
+    
+    const formatted = availableDrivers.map(d => ({
+      id: d.id,
+      name: d.name,
+      phone: d.phone,
+      avatar: d.avatar,
+      dailyFee: d.dailyFee,
+    }));
+    
+    res.json({ code: 200, data: formatted });
+  } catch (err) {
+    console.error('Error fetching available drivers:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/driver-schedules/calendar - 获取司机排班日历（管理员）
+app.get('/api/driver-schedules/calendar', verifyAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate, month } = req.query;
+    
+    let queryStartDate, queryEndDate;
+    
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      queryStartDate = new Date(year, mon - 1, 1);
+      queryEndDate = new Date(year, mon, 0);
+    } else if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      queryStartDate = new Date();
+      queryStartDate.setHours(0, 0, 0, 0);
+      queryEndDate = new Date(queryStartDate);
+      queryEndDate.setDate(queryEndDate.getDate() + 30);
+    }
+    
+    // 获取所有活跃司机
+    const drivers = await prisma.driver.findMany({
+      where: { status: 'active' },
+    });
+    
+    // 获取日期范围内的所有排班
+    const schedules = await prisma.driverSchedule.findMany({
+      where: {
+        date: {
+          gte: queryStartDate,
+          lte: queryEndDate,
+        },
+      },
+      include: {
+        driver: true,
+      },
+    });
+    
+    // 按日期组织数据
+    const calendar = {};
+    for (const schedule of schedules) {
+      const dateStr = schedule.date.toISOString().split('T')[0];
+      if (!calendar[dateStr]) {
+        calendar[dateStr] = {
+          available: [],
+          booked: [],
+          off: [],
+        };
+      }
+      
+      const driverInfo = {
+        id: schedule.driver.id,
+        name: schedule.driver.name,
+        phone: schedule.driver.phone,
+      };
+      
+      if (schedule.status === 'available') {
+        calendar[dateStr].available.push(driverInfo);
+      } else if (schedule.status === 'booked') {
+        calendar[dateStr].booked.push(driverInfo);
+      } else if (schedule.status === 'off') {
+        calendar[dateStr].off.push(driverInfo);
+      }
+    }
+    
+    // 添加没有排班记录的活跃司机到 available
+    for (const driver of drivers) {
+      const today = new Date(queryStartDate);
+      while (today <= queryEndDate) {
+        const dateStr = today.toISOString().split('T')[0];
+        if (!calendar[dateStr]) {
+          calendar[dateStr] = {
+            available: [],
+            booked: [],
+            off: [],
+          };
+        }
+        
+        // 检查该司机当天是否已有排班记录
+        const hasRecord = schedules.some(
+          s => s.driverId === driver.id && s.date.toISOString().split('T')[0] === dateStr
+        );
+        
+        if (!hasRecord) {
+          calendar[dateStr].available.push({
+            id: driver.id,
+            name: driver.name,
+            phone: driver.phone,
+          });
+        }
+        
+        today.setDate(today.getDate() + 1);
+      }
+    }
+    
+    res.json({ code: 200, data: calendar });
+  } catch (err) {
+    console.error('Error fetching driver calendar:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Finance
 app.get('/api/finance/overview', async (req, res) => {
   try {
@@ -1418,26 +2102,6 @@ app.post('/api/admin/login', async (req, res) => {
 // ============================================
 // Business Config APIs (业务配置)
 // ============================================
-
-// 验证管理员权限的中间件
-const verifyAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ code: 401, msg: '未授权访问' });
-  }
-  
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.role !== 'admin') {
-      return res.status(403).json({ code: 403, msg: '需要管理员权限' });
-    }
-    req.admin = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ code: 401, msg: '无效的Token' });
-  }
-};
 
 // GET /api/config - 获取所有配置
 app.get('/api/config', async (req, res) => {

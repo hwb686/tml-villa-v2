@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ClipboardList, CreditCard, Settings, ChevronDown, ChevronRight, Home, Car, Ticket, UtensilsCrossed, LogOut, Menu, X, Tags, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, CreditCard, Settings, ChevronDown, ChevronRight, Home, Car, Ticket, UtensilsCrossed, LogOut, Menu, X, Tags, Calendar, User } from 'lucide-react';
 
 interface MenuItem {
   key: string;
@@ -23,14 +23,25 @@ const menuItems: MenuItem[] = [
   { key: 'users', label: '用户管理', icon: Users, path: 'users' },
   { key: 'categories', label: '分类管理', icon: Tags, path: 'categories' },
   { key: 'homestays', label: '民宿管理', icon: Home, path: 'homestays' },
-  { key: 'stock', label: '库存管理', icon: Calendar, path: 'stock' },
+  { key: 'stock', label: '民宿库存', icon: Calendar, path: 'stock' },
+  { 
+    key: 'car-management', 
+    label: '车辆管理', 
+    icon: Car, 
+    children: [
+      { key: 'car-configs', label: '车辆配置', icon: Car, path: 'car-configs' },
+      { key: 'car-stock', label: '车辆库存', icon: Calendar, path: 'car-stock' },
+      { key: 'car-rentals', label: '租车订单', icon: ClipboardList, path: 'car-rentals' },
+      { key: 'drivers', label: '司机管理', icon: User, path: 'drivers' },
+      { key: 'driver-schedule', label: '司机排班', icon: Calendar, path: 'driver-schedule' },
+    ]
+  },
   { 
     key: 'orders', 
     label: '订单管理', 
     icon: ClipboardList, 
     children: [
       { key: 'orders-homestay', label: '民宿订单', icon: Home, path: 'orders/homestay' },
-      { key: 'orders-car', label: '租车订单', icon: Car, path: 'car-rentals' },
       { key: 'orders-ticket', label: '票务订单', icon: Ticket, path: 'ticket-orders' },
       { key: 'orders-meal', label: '订餐订单', icon: UtensilsCrossed, path: 'meal-orders' },
     ]
@@ -41,7 +52,6 @@ const menuItems: MenuItem[] = [
     icon: Settings, 
     children: [
       { key: 'meal-configs', label: '餐饮配置', icon: UtensilsCrossed, path: 'meal-configs' },
-      { key: 'car-configs', label: '车辆配置', icon: Car, path: 'car-configs' },
       { key: 'ticket-configs', label: '票务配置', icon: Ticket, path: 'ticket-configs' },
     ]
   },
@@ -59,7 +69,7 @@ const menuItems: MenuItem[] = [
 ];
 
 export default function Sidebar({ collapsed, onToggle, currentPath, onNavigate, onLogout }: SidebarProps) {
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['orders', 'configs']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['orders', 'configs', 'car-management']);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleExpanded = (key: string) => {

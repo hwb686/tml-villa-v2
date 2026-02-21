@@ -148,8 +148,9 @@
       "optimization": "排班表只存未来30天",
       "steps": ["车辆数量管理", "司机配置", "日期库存", "预订校验"],
       "acceptance_criteria": ["车辆日历", "可配司机选项", "司机排班"],
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已完成: 后端API包括车辆库存管理(CarStock)、司机管理(Driver)、司机排班(DriverSchedule)；前端页面包括车辆库存日历(CarStockManagement)、司机管理(Drivers)、司机排班管理(DriverSchedule)；车辆配置支持可配司机选项和司机费用设置"
     },
     {
       "id": "F009",

@@ -539,6 +539,81 @@
 
 ---
 
+## 会话 11 - 2026-02-21
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F008 - 车辆库存管理（含配司机）
+
+### 开始时状态:
+- 已完成功能: 8
+- 当前功能: F008
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 更新 schema.prisma 添加新数据模型
+  - CarStock 表 - 车辆日期库存
+  - Driver 表 - 司机信息
+  - DriverSchedule 表 - 司机排班
+  - 更新 CarRental 添加司机相关字段 (needDriver, driverId, driverFee)
+  - 更新 CarConfig 添加司机选项 (hasDriver, driverFee)
+- [x] 运行 prisma db push 同步数据库
+- [x] 实现后端 API
+  - 车辆库存 API: GET/POST/PUT stock, init-stock, batch-stock, unavailable-dates, cleanup
+  - 司机管理 API: GET/POST/PUT/DELETE drivers
+  - 司机排班 API: GET schedule, POST schedule, GET available, GET calendar
+- [x] 实现前端页面
+  - CarStockManagement.tsx - 车辆库存日历管理
+  - Drivers.tsx - 司机管理
+  - DriverSchedule.tsx - 司机排班管理
+- [x] 更新前端 API 服务 (carStockApi, driverApi, driverScheduleApi)
+- [x] 更新 AdminApp.tsx 添加路由
+- [x] 更新 Sidebar.tsx 添加菜单项
+- [x] 更新 CarConfigs.tsx 支持可配司机选项
+
+### API 端点:
+| 端点 | 方法 | 描述 | 权限 |
+|------|------|------|------|
+| /api/car-configs/:id/stock | GET | 获取车辆库存 | 公开 |
+| /api/car-configs/:id/init-stock | POST | 初始化库存 | 管理员 |
+| /api/car-configs/:id/stock/:date | PUT | 更新单日库存 | 管理员 |
+| /api/car-configs/:id/batch-stock | POST | 批量设置库存 | 管理员 |
+| /api/car-configs/:id/unavailable-dates | GET | 获取不可用日期 | 公开 |
+| /api/drivers | GET/POST | 获取/创建司机 | 公开/管理员 |
+| /api/drivers/:id | GET/PUT/DELETE | 司机详情/更新/删除 | 公开/管理员 |
+| /api/drivers/:id/schedule | GET/POST | 获取/设置排班 | 公开/管理员 |
+| /api/driver-schedules/available | GET | 获取可用司机 | 公开 |
+| /api/driver-schedules/calendar | GET | 排班日历 | 管理员 |
+
+### 验收标准验证:
+- [x] 车辆日历 - CarStockManagement 页面实现完整的日历视图
+- [x] 可配司机选项 - CarConfig 支持 hasDriver 和 driverFee 字段
+- [x] 司机排班 - DriverSchedule 页面支持批量设置排班状态
+
+### 数据模型说明:
+| 表 | 说明 |
+|------|------|
+| CarStock | 车辆日期库存，类似 HouseStock |
+| Driver | 司机信息（姓名、电话、驾照、日薪） |
+| DriverSchedule | 司机排班（日期、状态：available/booked/off） |
+
+### 修改的文件:
+- backend/prisma/schema.prisma (添加 CarStock, Driver, DriverSchedule 模型)
+- backend/api/db.js (添加车辆库存、司机、排班 API)
+- app/src/services/api.ts (添加 carStockApi, driverApi, driverScheduleApi)
+- app/src/pages/CarStockManagement.tsx (新建)
+- app/src/pages/Drivers.tsx (新建)
+- app/src/pages/DriverSchedule.tsx (新建)
+- app/src/pages/CarConfigs.tsx (支持司机配置)
+- app/src/AdminApp.tsx (添加路由)
+- app/src/components/layout/Sidebar.tsx (添加菜单)
+- feature_list.json (更新 F008 状态)
+
+### 结束时状态:
+- 已完成功能: 9
+- 下一个功能: F009 (用户中心)
+- 备注: 车辆库存管理功能完整，包括日历视图、司机管理、排班管理
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════

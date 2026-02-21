@@ -8,6 +8,9 @@ import MealOrders from '@/pages/MealOrders';
 import MealConfigs from '@/pages/MealConfigs';
 import CarRentals from '@/pages/CarRentals';
 import CarConfigs from '@/pages/CarConfigs';
+import CarStockManagement from '@/pages/CarStockManagement';
+import Drivers from '@/pages/Drivers';
+import DriverSchedule from '@/pages/DriverSchedule';
 import TicketOrders from '@/pages/TicketOrders';
 import TicketConfigs from '@/pages/TicketConfigs';
 import StockManagement from '@/pages/StockManagement';
@@ -70,10 +73,16 @@ export default function AdminApp() {
         return <MealOrders />;
       case 'meal-configs':
         return <MealConfigs />;
-      case 'car-rentals':
+case 'car-rentals':
         return <CarRentals />;
       case 'car-configs':
         return <CarConfigs />;
+      case 'car-stock':
+        return <CarStockManagement />;
+      case 'drivers':
+        return <Drivers />;
+      case 'driver-schedule':
+        return <DriverSchedule />;
       case 'ticket-orders':
         return <TicketOrders />;
       case 'ticket-configs':

@@ -127,19 +127,22 @@ model MealOrder {
 
 // 车辆配置（后台可配置）
 model CarConfig {
-  id          String   @id @default(cuid())
-  name        String   // 车辆名称，如"丰田凯美瑞"
-  description String?  // 车辆描述
-  image       String   // 车辆图片URL
-  price       Int      // 租赁价格（泰铢/天）
-  carType     String   @map("car_type") // 车型：SUV、轿车、电动车等
-  seats       Int      // 座位数
-  isActive    Boolean  @default(true) @map("is_active")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("create_time")
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String   // 车辆名称，如"丰田凯美瑞"
+  description    String?  // 车辆描述
+  image          String   // 车辆图片URL
+  price          Int      // 租赁价格（泰铢/天）
+  carType        String   @map("car_type") // 车型：SUV、轿车、电动车等
+  seats          Int      // 座位数
+  hasDriver      Boolean  @default(true) @map("has_driver") // 可否配司机
+  driverFee      Int      @default(0) @map("driver_fee") // 司机每日费用
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("create_time")
+  updatedAt      DateTime @updatedAt
   
-  rentals     CarRental[]
+  rentals        CarRental[]
+  stocks         CarStock[]
   
   @@map("car_configs")
 }
@@ -154,12 +157,70 @@ model CarRental {
   totalPrice    Int      @map("total_price") // 总价
   remark        String?
   status        String   @default("PENDING")
+  needDriver    Boolean  @default(false) @map("need_driver") // 是否需要司机
+  driverId      String?  @map("driver_id") // 分配的司机ID
+  driverFee     Int?     @map("driver_fee") // 司机费用
   createdAt     DateTime @default(now()) @map("create_time")
   updatedAt     DateTime @updatedAt
   
-  carConfig     CarConfig @relation(fields: [carConfigId], references: [id])
+  carConfig     CarConfig  @relation(fields: [carConfigId], references: [id])
+  driver        Driver?    @relation(fields: [driverId], references: [id])
   
   @@map("car_rentals")
+}
+
+// 车辆库存（日期维度）
+model CarStock {
+  id            String   @id @default(cuid())
+  carConfigId   String   @map("car_config_id")
+  date          DateTime @db.Date
+  totalStock    Int      @default(1) @map("total_stock")
+  bookedStock   Int      @default(0) @map("booked_stock")
+  price         Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  carConfig     CarConfig @relation(fields: [carConfigId], references: [id], onDelete: Cascade)
+  
+  @@unique([carConfigId, date])
+  @@index([date])
+  @@map("car_stocks")
+}
+
+// 司机信息
+model Driver {
+  id            String   @id @default(cuid())
+  name          String   // 司机姓名
+  phone         String   // 联系电话
+  avatar        String?  // 头像
+  licenseNumber String?  @map("license_number") // 驾照号
+  status        String   @default("active") // active, inactive, on_leave
+  dailyFee      Int      @default(0) @map("daily_fee") // 每日费用
+  remark        String?  // 备注
+  createdAt     DateTime @default(now()) @map("create_time")
+  updatedAt     DateTime @updatedAt
+  
+  schedules     DriverSchedule[]
+  rentals       CarRental[]
+  
+  @@map("drivers")
+}
+
+// 司机排班（日期维度）
+model DriverSchedule {
+  id            String   @id @default(cuid())
+  driverId      String   @map("driver_id")
+  date          DateTime @db.Date
+  status        String   @default("available") // available, booked, off
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  driver        Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  
+  @@unique([driverId, date])
+  @@index([date, status])
+  @@map("driver_schedules")
 }
 
 model Category {

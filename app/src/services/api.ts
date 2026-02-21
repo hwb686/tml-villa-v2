@@ -224,6 +224,79 @@ export const carApi = {
   updateStatus: (id: string, status: string) => fetchApi<CarRental>(`/car-rentals/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 };
 
+// 车辆库存管理 API
+export const carStockApi = {
+  get: (carConfigId: string, params: { startDate?: string; endDate?: string; month?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params.month) queryParams.append('month', params.month);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<CarStockData>(`/car-configs/${carConfigId}/stock?${queryParams.toString()}`);
+  },
+  init: (carConfigId: string, data: { totalStock: number; startDate?: string; endDate?: string; price?: number }) =>
+    fetchAdminApi<CarStockResult>(`/car-configs/${carConfigId}/init-stock`, { 
+      method: 'POST', 
+      body: JSON.stringify(data) 
+    }),
+  update: (carConfigId: string, date: string, data: { totalStock?: number; price?: number }) =>
+    fetchAdminApi<CarStockDayInfo>(`/car-configs/${carConfigId}/stock/${date}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  batchUpdate: (carConfigId: string, data: { dates: string[]; totalStock: number; price?: number }) =>
+    fetchAdminApi<CarStockResult>(`/car-configs/${carConfigId}/batch-stock`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getUnavailableDates: (carConfigId: string, params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<string[]>(`/car-configs/${carConfigId}/unavailable-dates?${queryParams.toString()}`);
+  },
+  cleanup: (carConfigId: string) =>
+    fetchAdminApi<{ count: number }>(`/car-configs/${carConfigId}/stock/cleanup`, {
+      method: 'DELETE',
+    }),
+};
+
+// 司机管理 API
+export const driverApi = {
+  getAll: (params?: { status?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    return fetchApi<Driver[]>(`/drivers?${queryParams.toString()}`);
+  },
+  getById: (id: string) => fetchApi<Driver>(`/drivers/${id}`),
+  create: (data: CreateDriverData) => fetchAdminApi<Driver>('/drivers', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<CreateDriverData>) => fetchAdminApi<Driver>(`/drivers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => fetchAdminApi<void>(`/drivers/${id}`, { method: 'DELETE' }),
+};
+
+// 司机排班 API
+export const driverScheduleApi = {
+  getByDriver: (driverId: string, params?: { startDate?: string; endDate?: string; month?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.month) queryParams.append('month', params.month);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<DriverScheduleData>(`/drivers/${driverId}/schedule?${queryParams.toString()}`);
+  },
+  setSchedule: (driverId: string, data: { dates: string[]; status: 'available' | 'booked' | 'off'; remark?: string }) =>
+    fetchAdminApi<{ count: number }>(`/drivers/${driverId}/schedule`, { 
+      method: 'POST', 
+      body: JSON.stringify(data) 
+    }),
+  getAvailable: (date: string) => fetchApi<Driver[]>(`/driver-schedules/available?date=${date}`),
+  getCalendar: (params?: { startDate?: string; endDate?: string; month?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.month) queryParams.append('month', params.month);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchAdminApi<DriverCalendarData>(`/driver-schedules/calendar?${queryParams.toString()}`);
+  },
+};
+
 // Types
 export interface Category { id: string; label: { zh: string; en: string; th: string }; icon: string; sortOrder: number; isActive: boolean; }
 export interface CreateCategoryData { label: { zh: string; en: string; th: string }; icon: string; sortOrder?: number; }
@@ -298,8 +371,22 @@ export interface TicketConfig { id: string; name: string; description?: string; 
 export interface CreateTicketConfigData { name: string; description?: string; image: string; price: number; ticketType: string; sortOrder?: number; isActive?: boolean; }
 export interface TicketOrder { id: string; roomNumber: string; ticketConfig: { id: string; name: string; image: string; price: number; }; quantity: number; totalPrice: number; visitDate: string | null; remark?: string; status: 'CONFIRMED' | 'CANCELLED'; createTime: string; }
 export interface TicketOrderData { roomNumber: string; ticketConfigId: string; quantity: number; visitDate?: string; remark?: string; }
-export interface CarConfig { id: string; name: string; description?: string; image: string; price: number; carType: string; seats: number; isActive: boolean; sortOrder: number; createdAt: string; updatedAt: string; }
-export interface CreateCarConfigData { name: string; description?: string; image: string; price: number; carType: string; seats: number; sortOrder?: number; isActive?: boolean; }
-export interface CarRental { id: string; roomNumber: string; carConfig: { id: string; name: string; image: string; price: number; carType: string; }; startTime: string; endTime: string; days: number; totalPrice: number; remark?: string; status: 'PENDING' | 'CONFIRMED' | 'CANCELLED'; createTime: string; }
-export interface CarRentalData { roomNumber: string; carConfigId: string; startTime: string; endTime: string; days: number; remark?: string; }
+export interface CarConfig { id: string; name: string; description?: string; image: string; price: number; carType: string; seats: number; hasDriver?: boolean; driverFee?: number; isActive: boolean; sortOrder: number; createdAt: string; updatedAt: string; }
+export interface CreateCarConfigData { name: string; description?: string; image: string; price: number; carType: string; seats: number; hasDriver?: boolean; driverFee?: number; sortOrder?: number; isActive?: boolean; }
+export interface CarRental { id: string; roomNumber: string; carConfig: { id: string; name: string; image: string; price: number; carType: string; }; startTime: string; endTime: string; days: number; totalPrice: number; remark?: string; status: 'PENDING' | 'CONFIRMED' | 'CANCELLED'; needDriver?: boolean; driverId?: string; driverFee?: number; driver?: { id: string; name: string; phone: string; }; createTime: string; }
+export interface CarRentalData { roomNumber: string; carConfigId: string; startTime: string; endTime: string; days: number; remark?: string; needDriver?: boolean; }
+
+// 车辆库存相关类型
+export interface CarStockDayInfo { date: string; total: number; booked: number; available: number; price: number | null; }
+export interface CarStockData { [date: string]: CarStockDayInfo; }
+export interface CarStockResult { count: number; }
+
+// 司机相关类型
+export interface Driver { id: string; name: string; phone: string; avatar?: string; licenseNumber?: string; status: 'active' | 'inactive' | 'on_leave'; dailyFee: number; remark?: string; createdAt: string; }
+export interface CreateDriverData { name: string; phone: string; avatar?: string; licenseNumber?: string; status?: 'active' | 'inactive' | 'on_leave'; dailyFee?: number; remark?: string; }
+
+// 司机排班相关类型
+export interface DriverScheduleData { [date: string]: { status: 'available' | 'booked' | 'off'; remark?: string; }; }
+export interface DriverCalendarDayData { available: Driver[]; booked: Driver[]; off: Driver[]; }
+export interface DriverCalendarData { [date: string]: DriverCalendarDayData; }
 export { fetchApi };

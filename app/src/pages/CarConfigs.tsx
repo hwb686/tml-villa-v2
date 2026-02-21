@@ -22,13 +22,15 @@ export default function CarConfigs() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<CarConfig | null>(null);
-  const [formData, setFormData] = useState<CreateCarConfigData>({
+const [formData, setFormData] = useState<CreateCarConfigData>({
     name: '',
     description: '',
     image: '',
     price: 0,
     carType: '轿车',
     seats: 5,
+    hasDriver: true,
+    driverFee: 0,
     sortOrder: 0,
   });
   const [saveError, setSaveError] = useState('');
@@ -55,7 +57,7 @@ export default function CarConfigs() {
     config.carType.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreate = () => {
+const handleCreate = () => {
     setSelectedConfig(null);
     setFormData({
       name: '',
@@ -64,6 +66,8 @@ export default function CarConfigs() {
       price: 0,
       carType: '轿车',
       seats: 5,
+      hasDriver: true,
+      driverFee: 0,
       sortOrder: 0,
     });
     setSaveError('');
@@ -79,6 +83,8 @@ export default function CarConfigs() {
       price: config.price,
       carType: config.carType,
       seats: config.seats,
+      hasDriver: config.hasDriver ?? true,
+      driverFee: config.driverFee ?? 0,
       sortOrder: config.sortOrder,
     });
     setSaveError('');
@@ -226,16 +232,22 @@ export default function CarConfigs() {
                   </Badge>
                 </div>
               </div>
-              <CardContent className="p-4">
+<CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Badge variant="outline">{config.carType}</Badge>
                   <Badge variant="outline" className="flex items-center gap-1">
                     <Users size={12} />
                     {config.seats}座
                   </Badge>
+                  {config.hasDriver && (
+                    <Badge className="bg-blue-100 text-blue-700">可配司机</Badge>
+                  )}
                 </div>
                 <h3 className="font-medium text-lg mb-1">{config.name}</h3>
-                <p className="text-lg font-semibold text-green-600 mb-2">฿{config.price}/天</p>
+                <p className="text-lg font-semibold text-green-600 mb-1">฿{config.price}/天</p>
+                {config.hasDriver && config.driverFee && config.driverFee > 0 && (
+                  <p className="text-sm text-blue-600 mb-2">司机 ฿{config.driverFee}/天</p>
+                )}
                 <p className="text-sm text-gray-500 whitespace-pre-wrap mb-3">{config.description}</p>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(config)}>
@@ -344,7 +356,7 @@ export default function CarConfigs() {
                   onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
                 />
               </div>
-              <div className="space-y-2">
+<div className="space-y-2">
                 <Label>座位数 <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
@@ -354,6 +366,32 @@ export default function CarConfigs() {
                   onChange={(e) => setFormData({ ...formData, seats: parseInt(e.target.value) || 1 })}
                 />
               </div>
+            </div>
+
+            {/* 司机配置 */}
+            <div className="space-y-2 p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="hasDriver"
+                  checked={formData.hasDriver}
+                  onChange={(e) => setFormData({ ...formData, hasDriver: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="hasDriver" className="cursor-pointer">可配司机</Label>
+              </div>
+              {formData.hasDriver && (
+                <div className="space-y-2 mt-2">
+                  <Label>司机费用（泰铢/天）</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.driverFee}
+                    onChange={(e) => setFormData({ ...formData, driverFee: parseInt(e.target.value) || 0 })}
+                    placeholder="0"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
