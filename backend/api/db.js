@@ -4931,6 +4931,392 @@ app.delete('/api/costs/:id', verifyAdmin, async (req, res) => {
   }
 });
 
+// =====================================================
+// 运营报表 API - F014
+// =====================================================
+
+// 辅助函数：获取日期范围
+function getDateRange(startDate, endDate) {
+  const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const end = endDate ? new Date(endDate) : new Date();
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+// GET /api/reports/overview - 综合报表概览
+app.get('/api/reports/overview', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate, endDate);
+
+    // 并行获取所有统计数据
+    const [
+      orders,
+      users,
+      costs,
+      homestays,
+      mealOrders,
+      carRentals,
+      ticketOrders
+    ] = await Promise.all([
+      // 订单统计
+      prisma.order.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { totalPrice: true, status: true, type: true, createdAt: true }
+      }),
+      // 用户统计
+      prisma.user.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { id: true, createdAt: true }
+      }),
+      // 成本统计
+      prisma.cost.findMany({
+        where: { date: { gte: start, lte: end }, status: 'confirmed' },
+        select: { amount: true, costType: true }
+      }),
+      // 民宿统计
+      prisma.homestay.count(),
+      // 餐饮订单
+      prisma.mealOrder.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { totalPrice: true, status: true }
+      }),
+      // 车辆租赁
+      prisma.carRental.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { totalPrice: true, status: true }
+      }),
+      // 票务订单
+      prisma.ticketOrder.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { totalPrice: true, status: true }
+      })
+    ]);
+
+    // 计算收入
+    const homestayRevenue = orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.totalPrice, 0);
+    const mealRevenue = mealOrders.filter(o => o.status === 'COMPLETED' || o.status === 'CONFIRMED').reduce((sum, o) => sum + o.totalPrice, 0);
+    const carRevenue = carRentals.filter(o => o.status === 'COMPLETED' || o.status === 'CONFIRMED').reduce((sum, o) => sum + o.totalPrice, 0);
+    const ticketRevenue = ticketOrders.filter(o => o.status === 'COMPLETED' || o.status === 'CONFIRMED').reduce((sum, o) => sum + o.totalPrice, 0);
+    const totalRevenue = homestayRevenue + mealRevenue + carRevenue + ticketRevenue;
+
+    // 计算成本
+    const totalCost = costs.reduce((sum, c) => sum + c.amount, 0);
+
+    // 订单状态分布
+    const orderStatusDistribution = {
+      pending: orders.filter(o => o.status === 'pending').length,
+      confirmed: orders.filter(o => o.status === 'confirmed').length,
+      completed: orders.filter(o => o.status === 'completed').length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+    };
+
+    // 订单类型分布
+    const orderTypeDistribution = {
+      homestay: orders.filter(o => o.type === 'homestay').length,
+      car: orders.filter(o => o.type === 'car').length,
+      ticket: orders.filter(o => o.type === 'ticket').length,
+      dining: orders.filter(o => o.type === 'dining').length,
+    };
+
+    res.json({
+      code: 200,
+      data: {
+        period: { start: start.toISOString(), end: end.toISOString() },
+        revenue: {
+          total: totalRevenue,
+          homestay: homestayRevenue,
+          meal: mealRevenue,
+          car: carRevenue,
+          ticket: ticketRevenue,
+        },
+        cost: {
+          total: totalCost,
+          profit: totalRevenue - totalCost,
+          profitMargin: totalRevenue > 0 ? Math.round((totalRevenue - totalCost) / totalRevenue * 100) : 0,
+        },
+        orders: {
+          total: orders.length,
+          homestay: orders.length,
+          meal: mealOrders.length,
+          car: carRentals.length,
+          ticket: ticketOrders.length,
+          statusDistribution: orderStatusDistribution,
+          typeDistribution: orderTypeDistribution,
+        },
+        users: {
+          newUsers: users.length,
+          totalHomestays: homestays,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching report overview:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/reports/revenue - 收入报表（按日期趋势）
+app.get('/api/reports/revenue', async (req, res) => {
+  try {
+    const { startDate, endDate, groupBy = 'day' } = req.query;
+    const { start, end } = getDateRange(startDate, endDate);
+
+    // 获取所有收入来源
+    const [orders, mealOrders, carRentals, ticketOrders] = await Promise.all([
+      prisma.order.findMany({
+        where: { createdAt: { gte: start, lte: end }, status: 'completed' },
+        select: { totalPrice: true, createdAt: true, type: true }
+      }),
+      prisma.mealOrder.findMany({
+        where: { createdAt: { gte: start, lte: end }, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+        select: { totalPrice: true, createdAt: true }
+      }),
+      prisma.carRental.findMany({
+        where: { createdAt: { gte: start, lte: end }, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+        select: { totalPrice: true, createdAt: true }
+      }),
+      prisma.ticketOrder.findMany({
+        where: { createdAt: { gte: start, lte: end }, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+        select: { totalPrice: true, createdAt: true }
+      })
+    ]);
+
+    // 按日期分组
+    const revenueByDate = {};
+
+    const addToDate = (date, amount, type) => {
+      const d = new Date(date);
+      let key;
+      if (groupBy === 'week') {
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        key = weekStart.toISOString().split('T')[0];
+      } else if (groupBy === 'month') {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+      } else {
+        key = d.toISOString().split('T')[0];
+      }
+
+      if (!revenueByDate[key]) {
+        revenueByDate[key] = { date: key, homestay: 0, meal: 0, car: 0, ticket: 0, total: 0 };
+      }
+      revenueByDate[key][type] += amount;
+      revenueByDate[key].total += amount;
+    };
+
+    orders.forEach(o => addToDate(o.createdAt, o.totalPrice, 'homestay'));
+    mealOrders.forEach(o => addToDate(o.createdAt, o.totalPrice, 'meal'));
+    carRentals.forEach(o => addToDate(o.createdAt, o.totalPrice, 'car'));
+    ticketOrders.forEach(o => addToDate(o.createdAt, o.totalPrice, 'ticket'));
+
+    // 转换为数组并排序
+    const trend = Object.values(revenueByDate).sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json({
+      code: 200,
+      data: {
+        period: { start: start.toISOString(), end: end.toISOString() },
+        groupBy,
+        trend,
+        summary: {
+          totalRevenue: trend.reduce((sum, d) => sum + d.total, 0),
+          avgDaily: trend.length > 0 ? Math.round(trend.reduce((sum, d) => sum + d.total, 0) / trend.length) : 0,
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching revenue report:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/reports/orders - 订单统计报表
+app.get('/api/reports/orders', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate, endDate);
+
+    const [orders, mealOrders, carRentals, ticketOrders] = await Promise.all([
+      prisma.order.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { id: true, status: true, type: true, totalPrice: true, createdAt: true, houseId: true }
+      }),
+      prisma.mealOrder.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { id: true, status: true, totalPrice: true, createdAt: true, mealConfigId: true }
+      }),
+      prisma.carRental.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { id: true, status: true, totalPrice: true, createdAt: true, carConfigId: true }
+      }),
+      prisma.ticketOrder.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { id: true, status: true, totalPrice: true, createdAt: true, ticketConfigId: true }
+      })
+    ]);
+
+    // 订单状态分布
+    const getStatusCount = (list, statusField = 'status') => {
+      return {
+        pending: list.filter(o => o[statusField] === 'pending' || o[statusField] === 'PENDING').length,
+        confirmed: list.filter(o => o[statusField] === 'confirmed' || o[statusField] === 'CONFIRMED').length,
+        completed: list.filter(o => o[statusField] === 'completed' || o[statusField] === 'COMPLETED').length,
+        cancelled: list.filter(o => o[statusField] === 'cancelled' || o[statusField] === 'CANCELLED').length,
+      };
+    };
+
+    // 按日期分组
+    const ordersByDate = {};
+    const addOrderByDate = (date, type) => {
+      const key = new Date(date).toISOString().split('T')[0];
+      if (!ordersByDate[key]) {
+        ordersByDate[key] = { date: key, homestay: 0, meal: 0, car: 0, ticket: 0, total: 0 };
+      }
+      ordersByDate[key][type]++;
+      ordersByDate[key].total++;
+    };
+
+    orders.forEach(o => addOrderByDate(o.createdAt, 'homestay'));
+    mealOrders.forEach(o => addOrderByDate(o.createdAt, 'meal'));
+    carRentals.forEach(o => addOrderByDate(o.createdAt, 'car'));
+    ticketOrders.forEach(o => addOrderByDate(o.createdAt, 'ticket'));
+
+    const trend = Object.values(ordersByDate).sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json({
+      code: 200,
+      data: {
+        period: { start: start.toISOString(), end: end.toISOString() },
+        total: orders.length + mealOrders.length + carRentals.length + ticketOrders.length,
+        byType: {
+          homestay: { count: orders.length, status: getStatusCount(orders) },
+          meal: { count: mealOrders.length, status: getStatusCount(mealOrders) },
+          car: { count: carRentals.length, status: getStatusCount(carRentals) },
+          ticket: { count: ticketOrders.length, status: getStatusCount(ticketOrders) },
+        },
+        trend,
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching orders report:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/reports/users - 用户增长报表
+app.get('/api/reports/users', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate, endDate);
+
+    const [newUsers, totalUsers] = await Promise.all([
+      prisma.user.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { id: true, createdAt: true, role: true }
+      }),
+      prisma.user.count()
+    ]);
+
+    // 按日期分组
+    const usersByDate = {};
+    newUsers.forEach(u => {
+      const key = new Date(u.createdAt).toISOString().split('T')[0];
+      if (!usersByDate[key]) {
+        usersByDate[key] = { date: key, count: 0 };
+      }
+      usersByDate[key].count++;
+    });
+
+    const trend = Object.values(usersByDate).sort((a, b) => a.date.localeCompare(b.date));
+
+    // 累计用户数
+    let cumulative = 0;
+    const cumulativeTrend = trend.map(d => {
+      cumulative += d.count;
+      return { ...d, cumulative };
+    });
+
+    res.json({
+      code: 200,
+      data: {
+        period: { start: start.toISOString(), end: end.toISOString() },
+        newUsers: newUsers.length,
+        totalUsers,
+        avgDaily: trend.length > 0 ? Math.round(newUsers.length / trend.length) : 0,
+        trend: cumulativeTrend,
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching users report:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/reports/homestays - 房源报表（预订率、热门房源）
+app.get('/api/reports/homestays', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate, endDate);
+
+    const [homestays, orders, stocks] = await Promise.all([
+      prisma.homestay.findMany({
+        select: { id: true, title: true, price: true, rating: true, reviews: true }
+      }),
+      prisma.order.findMany({
+        where: { createdAt: { gte: start, lte: end }, type: 'homestay' },
+        select: { houseId: true, status: true, totalPrice: true }
+      }),
+      prisma.houseStock.findMany({
+        where: { date: { gte: start, lte: end } },
+        select: { houseId: true, totalStock: true, bookedStock: true }
+      })
+    ]);
+
+    // 房源预订统计
+    const homestayStats = homestays.map(h => {
+      const homestayOrders = orders.filter(o => o.houseId === h.id);
+      const homestayStocks = stocks.filter(s => s.houseId === h.id);
+      const totalStock = homestayStocks.reduce((sum, s) => sum + s.totalStock, 0);
+      const bookedStock = homestayStocks.reduce((sum, s) => sum + s.bookedStock, 0);
+
+      return {
+        id: h.id,
+        title: h.title,
+        price: h.price,
+        rating: h.rating,
+        reviews: h.reviews,
+        orderCount: homestayOrders.length,
+        completedOrders: homestayOrders.filter(o => o.status === 'completed').length,
+        revenue: homestayOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.totalPrice, 0),
+        bookingRate: totalStock > 0 ? Math.round(bookedStock / totalStock * 100) : 0,
+      };
+    });
+
+    // 按收入排序（热门房源）
+    const topByRevenue = [...homestayStats].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    const topByOrders = [...homestayStats].sort((a, b) => b.orderCount - a.orderCount).slice(0, 10);
+
+    res.json({
+      code: 200,
+      data: {
+        period: { start: start.toISOString(), end: end.toISOString() },
+        totalHomestays: homestays.length,
+        totalOrders: orders.length,
+        totalRevenue: homestayStats.reduce((sum, h) => sum + h.revenue, 0),
+        avgBookingRate: homestayStats.length > 0 ? Math.round(homestayStats.reduce((sum, h) => sum + h.bookingRate, 0) / homestayStats.length) : 0,
+        topByRevenue,
+        topByOrders,
+        all: homestayStats,
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching homestays report:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

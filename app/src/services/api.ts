@@ -919,4 +919,195 @@ export const costApi = {
   },
 };
 
+// =====================================================
+// 运营报表 API - F014
+// =====================================================
+
+// 日期范围
+export interface DateRange {
+  start: string;
+  end: string;
+}
+
+// 综合报表概览
+export interface ReportOverview {
+  period: DateRange;
+  revenue: {
+    total: number;
+    homestay: number;
+    meal: number;
+    car: number;
+    ticket: number;
+  };
+  cost: {
+    total: number;
+    profit: number;
+    profitMargin: number;
+  };
+  orders: {
+    total: number;
+    homestay: number;
+    meal: number;
+    car: number;
+    ticket: number;
+    statusDistribution: {
+      pending: number;
+      confirmed: number;
+      completed: number;
+      cancelled: number;
+    };
+    typeDistribution: {
+      homestay: number;
+      car: number;
+      ticket: number;
+      dining: number;
+    };
+  };
+  users: {
+    newUsers: number;
+    totalHomestays: number;
+  };
+}
+
+// 收入趋势数据
+export interface RevenueTrendItem {
+  date: string;
+  homestay: number;
+  meal: number;
+  car: number;
+  ticket: number;
+  total: number;
+}
+
+// 收入报表
+export interface RevenueReport {
+  period: DateRange;
+  groupBy: string;
+  trend: RevenueTrendItem[];
+  summary: {
+    totalRevenue: number;
+    avgDaily: number;
+  };
+}
+
+// 订单统计类型
+export interface OrderStatusCount {
+  pending: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface OrderTypeStats {
+  count: number;
+  status: OrderStatusCount;
+}
+
+export interface OrderTrendItem {
+  date: string;
+  homestay: number;
+  meal: number;
+  car: number;
+  ticket: number;
+  total: number;
+}
+
+// 订单报表
+export interface OrderReport {
+  period: DateRange;
+  total: number;
+  byType: {
+    homestay: OrderTypeStats;
+    meal: OrderTypeStats;
+    car: OrderTypeStats;
+    ticket: OrderTypeStats;
+  };
+  trend: OrderTrendItem[];
+}
+
+// 用户趋势数据
+export interface UserTrendItem {
+  date: string;
+  count: number;
+  cumulative: number;
+}
+
+// 用户报表
+export interface UserReport {
+  period: DateRange;
+  newUsers: number;
+  totalUsers: number;
+  avgDaily: number;
+  trend: UserTrendItem[];
+}
+
+// 房源统计
+export interface HomestayStats {
+  id: string;
+  title: string;
+  price: number;
+  rating: number;
+  reviews: number;
+  orderCount: number;
+  completedOrders: number;
+  revenue: number;
+  bookingRate: number;
+}
+
+// 房源报表
+export interface HomestayReport {
+  period: DateRange;
+  totalHomestays: number;
+  totalOrders: number;
+  totalRevenue: number;
+  avgBookingRate: number;
+  topByRevenue: HomestayStats[];
+  topByOrders: HomestayStats[];
+  all: HomestayStats[];
+}
+
+// 报表 API
+export const reportsApi = {
+  // 获取综合报表概览
+  getOverview: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<ReportOverview>(`/reports/overview?${queryParams.toString()}`);
+  },
+  
+  // 获取收入报表
+  getRevenue: (params?: { startDate?: string; endDate?: string; groupBy?: 'day' | 'week' | 'month' }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.groupBy) queryParams.append('groupBy', params.groupBy);
+    return fetchApi<RevenueReport>(`/reports/revenue?${queryParams.toString()}`);
+  },
+  
+  // 获取订单报表
+  getOrders: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<OrderReport>(`/reports/orders?${queryParams.toString()}`);
+  },
+  
+  // 获取用户报表
+  getUsers: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<UserReport>(`/reports/users?${queryParams.toString()}`);
+  },
+  
+  // 获取房源报表
+  getHomestays: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<HomestayReport>(`/reports/homestays?${queryParams.toString()}`);
+  },
+};
+
 export { fetchApi };

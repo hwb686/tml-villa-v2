@@ -259,8 +259,24 @@
       "title": "运营报表",
       "description": "收入/订单/用户数据报表",
       "free_limit_impact": "无影响",
-      "status": "partial",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "acceptance_criteria": [
+        "可以查看收入统计报表",
+        "可以查看订单统计报表",
+        "可以查看用户增长报表",
+        "支持日期范围筛选"
+      ],
+      "notes": "已于 2026-02-21 完成。后端API包括: /api/reports/overview(综合概览)、/api/reports/revenue(收入报表)、/api/reports/orders(订单报表)、/api/reports/users(用户增长报表)、/api/reports/homestays(房源报表)；前端Dashboard页面使用真实API数据，支持7天/30天/90天/自定义日期筛选，包含收入趋势图、订单类型分布、用户增长趋势、利润概览等图表。",
+      "steps": [
+        "创建报表API端点",
+        "实现收入统计（按日期趋势）",
+        "实现订单统计（按类型和状态）",
+        "实现用户增长统计",
+        "实现房源报表（预订率、热门房源）",
+        "前端Dashboard页面集成真实数据",
+        "添加日期范围筛选功能"
+      ]
     },
     {
       "id": "F015",

@@ -982,8 +982,88 @@
 
 ---
 
-══════════════════════════════════════════════════════════════
-                         日志结束 / END OF LOG
+## 会话 16 - 2026-02-21
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F014 - 运营报表
+
+### 开始时状态:
+- 已完成功能: 14
+- 当前功能: F014
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 创建后端报表API端点
+- [x] 实现 /api/reports/overview - 综合报表概览
+- [x] 实现 /api/reports/revenue - 收入统计（支持日期筛选、按日/周/月分组）
+- [x] 实现 /api/reports/orders - 订单统计（按类型和状态分布）
+- [x] 实现 /api/reports/users - 用户增长统计（新增用户、累计用户、趋势）
+- [x] 实现 /api/reports/homestays - 房源报表（预订率、热门房源）
+- [x] 更新前端Dashboard页面使用真实API数据
+- [x] 添加日期范围筛选功能（7天/30天/90天/自定义）
+- [x] 创建缺失的toast组件和use-toast hook
+- [x] 编写Playwright测试验证API功能
+
+### API 端点:
+| 端点 | 方法 | 描述 | 参数 |
+|------|------|------|------|
+| /api/reports/overview | GET | 综合报表概览 | startDate, endDate |
+| /api/reports/revenue | GET | 收入报表 | startDate, endDate, groupBy |
+| /api/reports/orders | GET | 订单报表 | startDate, endDate |
+| /api/reports/users | GET | 用户增长报表 | startDate, endDate |
+| /api/reports/homestays | GET | 房源报表 | startDate, endDate |
+
+### 前端功能:
+- 统计卡片：总收入、订单数、新增用户、待处理订单
+- 收入趋势图：按日期展示收入变化（使用recharts AreaChart）
+- 订单类型分布：饼图展示各业务线订单占比
+- 用户增长趋势：柱状图展示每日新增用户
+- 订单状态分布：进度条展示各状态订单占比
+- 收入来源分布：四宫格展示各业务线收入
+- 利润概览：总收入、总成本、净利润、利润率
+- 日期筛选：支持7天、30天、90天、自定义日期范围
+
+### 测试结果:
+- [x] 报表概览API ✅
+- [x] 收入报表API ✅
+- [x] 用户报表API ✅
+- [x] 订单报表API ✅
+- [x] 房源报表API ✅
+- [x] 日期筛选功能 ✅
+- [x] TypeScript编译通过 ✅
+- [x] Playwright API测试全部通过 ✅
+
+### 验收标准验证:
+- [x] 可以查看收入统计报表 - 已验证
+- [x] 可以查看订单统计报表 - 已验证
+- [x] 可以查看用户增长报表 - 已验证
+- [x] 支持日期范围筛选 - 已验证
+
+### 修改的文件:
+- backend/api/db.js (添加报表API端点)
+- app/src/pages/Dashboard.tsx (使用真实API数据，添加日期筛选)
+- app/src/services/api.ts (添加reportsApi和类型定义)
+- app/src/hooks/use-toast.ts (新建)
+- app/src/components/ui/toast.tsx (新建)
+- app/src/components/ui/toaster.tsx (新建)
+- e2e-tests/report-simple.spec.ts (新建)
+- playwright.config.ts (新建)
+- feature_list.json (更新 F014 状态)
+
+### 技术要点:
+- 报表API支持日期范围筛选（startDate, endDate）
+- 收入报表支持按日/周/月分组（groupBy参数）
+- 数据聚合从多个表（Order, MealOrder, CarRental, TicketOrder, Cost, User）
+- 前端使用recharts库绘制图表（AreaChart, PieChart, BarChart）
+- 日期处理使用date-fns库（format, subDays）
+- 自定义日期选择使用shadcn/ui Calendar组件
+
+### 结束时状态:
+- 已完成功能: 15
+- 下一个功能: F015 (管理端日历视图)
+- 备注: 运营报表功能完整，包括收入/订单/用户/房源四大类报表，支持日期筛选
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════
