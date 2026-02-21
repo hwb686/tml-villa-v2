@@ -19,6 +19,7 @@ import Finance from '@/pages/Finance';
 import Settings from '@/pages/Settings';
 import Categories from '@/pages/Categories';
 import HomestayManage from '@/pages/HomestayManage';
+import Reviews from '@/pages/Reviews';
 import { useAdminHashRouter } from '@/lib/router';
 
 export default function AdminApp() {
@@ -90,6 +91,8 @@ case 'car-rentals':
 
       case 'finance':
         return <Finance />;
+      case 'reviews':
+        return <Reviews />;
       case 'settings':
         return <Settings />;
       default:

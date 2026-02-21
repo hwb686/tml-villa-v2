@@ -3308,6 +3308,604 @@ app.post('/api/seed', async (req, res) => {
   }
 });
 
+// ============================================
+// 评价 API
+// ============================================
+
+ // GET /api/reviews - 获取评价列表（支持按民宿筛选）
+ app.get('/api/reviews', async (req, res) => {
+   try {
+     const { houseId, userId, page = 1, pageSize = 10 } = req.query;
+     
+     const where = { status: 'active' };
+     if (houseId) where.houseId = houseId;
+     if (userId) where.userId = userId;
+     
+     const skip = (parseInt(page) - 1) * parseInt(pageSize);
+     
+     const [reviews, total, statsData] = await Promise.all([
+       prisma.review.findMany({
+         where,
+         include: {
+           user: {
+             select: {
+               id: true,
+               username: true,
+               avatar: true,
+             },
+           },
+           house: {
+             select: {
+               id: true,
+               title: true,
+               images: true,
+             },
+           },
+           order: {
+             select: {
+               orderId: true,
+               checkIn: true,
+               checkOut: true,
+             },
+           },
+         },
+         orderBy: { createdAt: 'desc' },
+         skip,
+         take: parseInt(pageSize),
+       }),
+       prisma.review.count({ where }),
+       // 获取统计信息
+       houseId ? prisma.review.findMany({
+         where: { houseId, status: 'active' },
+         select: { rating: true },
+       }) : null,
+     ]);
+     
+     const data = reviews.map(r => ({
+       id: r.id,
+       rating: r.rating,
+       content: r.content,
+       images: r.images,
+       reply: r.reply,
+       replyAt: r.replyAt?.toISOString(),
+       createdAt: r.createdAt.toISOString(),
+       user: {
+         id: r.user.id,
+         name: r.user.username,
+         avatar: r.user.avatar,
+       },
+       house: {
+         id: r.house.id,
+         title: r.house.title,
+         image: r.house.images[0],
+       },
+       order: r.order ? {
+         orderId: r.order.orderId,
+         checkIn: r.order.checkIn?.toISOString().split('T')[0],
+         checkOut: r.order.checkOut?.toISOString().split('T')[0],
+       } : null,
+     }));
+     
+     // 计算统计信息
+     let stats = null;
+     if (statsData && statsData.length > 0) {
+       const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+       let sum = 0;
+       statsData.forEach(r => {
+         distribution[r.rating] = (distribution[r.rating] || 0) + 1;
+         sum += r.rating;
+       });
+       stats = {
+         average: Math.round((sum / statsData.length) * 10) / 10,
+         total: statsData.length,
+         distribution,
+       };
+     }
+     
+     res.json({
+       code: 200,
+       data: {
+         reviews: data,
+         total,
+         page: parseInt(page),
+         pageSize: parseInt(pageSize),
+         stats,
+       },
+     });
+   } catch (err) {
+     console.error('Error fetching reviews:', err);
+     res.status(500).json({ code: 500, msg: err.message });
+   }
+ });
+
+// GET /api/reviews/:id - 获取单个评价详情
+app.get('/api/reviews/:id', async (req, res) => {
+  try {
+    const review = await prisma.review.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+          },
+        },
+        house: {
+          select: {
+            id: true,
+            title: true,
+            images: true,
+          },
+        },
+        order: {
+          select: {
+            orderId: true,
+            checkIn: true,
+            checkOut: true,
+          },
+        },
+      },
+    });
+    
+    if (!review) {
+      return res.status(404).json({ code: 404, msg: '评价不存在' });
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        id: review.id,
+        rating: review.rating,
+        content: review.content,
+        images: review.images,
+        reply: review.reply,
+        replyAt: review.replyAt?.toISOString(),
+        status: review.status,
+        createdAt: review.createdAt.toISOString(),
+        user: {
+          id: review.user.id,
+          name: review.user.username,
+          avatar: review.user.avatar,
+        },
+        house: {
+          id: review.house.id,
+          title: review.house.title,
+          image: review.house.images[0],
+        },
+        order: review.order ? {
+          orderId: review.order.orderId,
+          checkIn: review.order.checkIn?.toISOString().split('T')[0],
+          checkOut: review.order.checkOut?.toISOString().split('T')[0],
+        } : null,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching review:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/reviews - 创建评价
+app.post('/api/reviews', authMiddleware, async (req, res) => {
+  try {
+    const { orderId, houseId, rating, content, images } = req.body;
+    const userId = req.user.id;
+    
+    // 参数验证
+    if (!orderId || !houseId || !rating) {
+      return res.status(400).json({ code: 400, msg: '请提供订单ID、民宿ID和评分' });
+    }
+    
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ code: 400, msg: '评分必须在1-5之间' });
+    }
+    
+    if (content && content.length > 200) {
+      return res.status(400).json({ code: 400, msg: '评价内容不能超过200字' });
+    }
+    
+    if (images && images.length > 3) {
+      return res.status(400).json({ code: 400, msg: '评价图片最多3张' });
+    }
+    
+    // 检查订单是否存在且属于当前用户
+    const order = await prisma.order.findUnique({
+      where: { orderId },
+    });
+    
+    if (!order) {
+      return res.status(404).json({ code: 404, msg: '订单不存在' });
+    }
+    
+    if (order.userId !== userId) {
+      return res.status(403).json({ code: 403, msg: '无权评价此订单' });
+    }
+    
+    if (order.houseId !== houseId) {
+      return res.status(400).json({ code: 400, msg: '订单与民宿不匹配' });
+    }
+    
+    // 检查订单状态是否为已完成
+    if (order.status !== 'completed') {
+      return res.status(400).json({ code: 400, msg: '只能评价已完成的订单' });
+    }
+    
+    // 检查是否已评价
+    const existingReview = await prisma.review.findUnique({
+      where: { orderId: order.id },
+    });
+    
+    if (existingReview) {
+      return res.status(400).json({ code: 400, msg: '该订单已评价' });
+    }
+    
+    // 创建评价
+    const review = await prisma.review.create({
+      data: {
+        userId,
+        houseId,
+        orderId: order.id,  // 使用 Order 表的主键 id
+        rating,
+        content: content || null,
+        images: images || [],
+        status: 'active',
+      },
+    });
+    
+    // 更新民宿评分和评价数
+    const allReviews = await prisma.review.findMany({
+      where: { houseId, status: 'active' },
+      select: { rating: true },
+    });
+    
+    const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+    
+    await prisma.homestay.update({
+      where: { id: houseId },
+      data: {
+        rating: Math.round(avgRating * 10) / 10, // 保留一位小数
+        reviews: allReviews.length,
+      },
+    });
+    
+    // 清除缓存
+    cache.del('homestays:all');
+    
+    res.json({
+      code: 200,
+      msg: '评价成功',
+      data: {
+        id: review.id,
+        rating: review.rating,
+        content: review.content,
+        images: review.images,
+        createdAt: review.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error creating review:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/reviews/:id - 更新评价（仅限创建者）
+app.put('/api/reviews/:id', authMiddleware, async (req, res) => {
+  try {
+    const { rating, content, images } = req.body;
+    const userId = req.user.id;
+    
+    const review = await prisma.review.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!review) {
+      return res.status(404).json({ code: 404, msg: '评价不存在' });
+    }
+    
+    if (review.userId !== userId) {
+      return res.status(403).json({ code: 403, msg: '无权修改此评价' });
+    }
+    
+    // 参数验证
+    if (rating !== undefined && (rating < 1 || rating > 5)) {
+      return res.status(400).json({ code: 400, msg: '评分必须在1-5之间' });
+    }
+    
+    if (content && content.length > 200) {
+      return res.status(400).json({ code: 400, msg: '评价内容不能超过200字' });
+    }
+    
+    if (images && images.length > 3) {
+      return res.status(400).json({ code: 400, msg: '评价图片最多3张' });
+    }
+    
+    const updateData = {};
+    if (rating !== undefined) updateData.rating = rating;
+    if (content !== undefined) updateData.content = content || null;
+    if (images !== undefined) updateData.images = images;
+    
+    const updatedReview = await prisma.review.update({
+      where: { id: req.params.id },
+      data: updateData,
+    });
+    
+    // 如果评分更新了，重新计算民宿平均分
+    if (rating !== undefined) {
+      const allReviews = await prisma.review.findMany({
+        where: { houseId: review.houseId, status: 'active' },
+        select: { rating: true },
+      });
+      
+      const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      
+      await prisma.homestay.update({
+        where: { id: review.houseId },
+        data: { rating: Math.round(avgRating * 10) / 10 },
+      });
+      
+      cache.del('homestays:all');
+    }
+    
+    res.json({
+      code: 200,
+      msg: '评价更新成功',
+      data: {
+        id: updatedReview.id,
+        rating: updatedReview.rating,
+        content: updatedReview.content,
+        images: updatedReview.images,
+        updatedAt: updatedReview.updatedAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error updating review:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/reviews/:id - 删除评价（仅限创建者或管理员）
+app.delete('/api/reviews/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
+    const review = await prisma.review.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!review) {
+      return res.status(404).json({ code: 404, msg: '评价不存在' });
+    }
+    
+    if (review.userId !== userId && !isAdmin) {
+      return res.status(403).json({ code: 403, msg: '无权删除此评价' });
+    }
+    
+    await prisma.review.delete({
+      where: { id: req.params.id },
+    });
+    
+    // 重新计算民宿评分
+    const allReviews = await prisma.review.findMany({
+      where: { houseId: review.houseId, status: 'active' },
+      select: { rating: true },
+    });
+    
+    const avgRating = allReviews.length > 0
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+      : 4.5; // 默认评分
+    
+    await prisma.homestay.update({
+      where: { id: review.houseId },
+      data: {
+        rating: Math.round(avgRating * 10) / 10,
+        reviews: allReviews.length,
+      },
+    });
+    
+    cache.del('homestays:all');
+    
+    res.json({ code: 200, msg: '评价已删除' });
+  } catch (err) {
+    console.error('Error deleting review:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/reviews/:id/reply - 管理员回复评价
+app.post('/api/reviews/:id/reply', verifyAdmin, async (req, res) => {
+  try {
+    const { reply } = req.body;
+    
+    if (!reply || reply.trim().length === 0) {
+      return res.status(400).json({ code: 400, msg: '回复内容不能为空' });
+    }
+    
+    if (reply.length > 500) {
+      return res.status(400).json({ code: 400, msg: '回复内容不能超过500字' });
+    }
+    
+    const review = await prisma.review.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!review) {
+      return res.status(404).json({ code: 404, msg: '评价不存在' });
+    }
+    
+    const updatedReview = await prisma.review.update({
+      where: { id: req.params.id },
+      data: {
+        reply: reply.trim(),
+        replyAt: new Date(),
+      },
+    });
+    
+    res.json({
+      code: 200,
+      msg: '回复成功',
+      data: {
+        id: updatedReview.id,
+        reply: updatedReview.reply,
+        replyAt: updatedReview.replyAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Error replying review:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/reviews/:id/status - 更新评价状态（管理员）
+app.put('/api/reviews/:id/status', verifyAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!['active', 'hidden'].includes(status)) {
+      return res.status(400).json({ code: 400, msg: '无效的状态' });
+    }
+    
+    const review = await prisma.review.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!review) {
+      return res.status(404).json({ code: 404, msg: '评价不存在' });
+    }
+    
+    const updatedReview = await prisma.review.update({
+      where: { id: req.params.id },
+      data: { status },
+    });
+    
+    // 重新计算民宿评分（隐藏的评价不计入）
+    const allReviews = await prisma.review.findMany({
+      where: { houseId: review.houseId, status: 'active' },
+      select: { rating: true },
+    });
+    
+    const avgRating = allReviews.length > 0
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+      : 4.5;
+    
+    await prisma.homestay.update({
+      where: { id: review.houseId },
+      data: {
+        rating: Math.round(avgRating * 10) / 10,
+        reviews: allReviews.length,
+      },
+    });
+    
+    cache.del('homestays:all');
+    
+    res.json({
+      code: 200,
+      msg: '状态更新成功',
+      data: {
+        id: updatedReview.id,
+        status: updatedReview.status,
+      },
+    });
+  } catch (err) {
+    console.error('Error updating review status:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/reviews/stats/:houseId - 获取民宿评价统计
+app.get('/api/reviews/stats/:houseId', async (req, res) => {
+  try {
+    const { houseId } = req.params;
+    
+    const reviews = await prisma.review.findMany({
+      where: { houseId, status: 'active' },
+      select: { rating: true },
+    });
+    
+    const total = reviews.length;
+    const avgRating = total > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / total
+      : 0;
+    
+    // 计算各星级数量
+    const ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const r of reviews) {
+      ratingCounts[r.rating]++;
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        total,
+        avgRating: Math.round(avgRating * 10) / 10,
+        ratingCounts,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching review stats:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/orders/completed - 获取用户已完成的订单（用于评价）
+app.get('/api/orders/completed', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const orders = await prisma.order.findMany({
+      where: {
+        userId,
+        status: 'completed',
+      },
+      include: {
+        house: {
+          select: {
+            id: true,
+            title: true,
+            images: true,
+            location: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    // 检查哪些订单已经评价过
+    const orderIds = orders.map(o => o.id);
+    const existingReviews = await prisma.review.findMany({
+      where: {
+        orderId: { in: orderIds },
+      },
+      select: { orderId: true },
+    });
+    
+    const reviewedOrderIds = new Set(existingReviews.map(r => r.orderId));
+    
+    const data = orders.map(o => ({
+      id: o.id,
+      orderId: o.orderId,
+      itemName: o.itemName,
+      totalPrice: o.totalPrice,
+      checkIn: o.checkIn?.toISOString().split('T')[0],
+      checkOut: o.checkOut?.toISOString().split('T')[0],
+      createdAt: o.createdAt.toISOString(),
+      house: o.house ? {
+        id: o.house.id,
+        title: o.house.title,
+        image: o.house.images[0],
+        location: o.house.location,
+      } : null,
+      hasReviewed: reviewedOrderIds.has(o.id),
+    }));
+    
+    res.json({ code: 200, data });
+  } catch (err) {
+    console.error('Error fetching completed orders:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
