@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, Share, Star, ChevronLeft, ChevronRight, Home, Users, Bed, Bath, Check, MapPin, Loader2 } from 'lucide-react';
+import { Heart, Share, Star, ChevronLeft, ChevronRight, Home, Users, Bed, Bath, Check, MapPin, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -10,11 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/hooks/useLanguage';
-import { homestayApi, bookingApi, type Homestay } from '@/services/api';
+import { homestayApi, bookingApi, reviewApi, type Homestay, type Review } from '@/services/api';
 import { platformSyncApi } from '@/services/platformSyncApi';
 import { format } from 'date-fns';
 import { zhCN, enUS, th } from 'date-fns/locale';
 import { getHashLink } from '@/lib/router';
+import { StarRating, RatingStats, ReviewList, ReviewForm } from '@/components/review';
 
 export default function HomestayDetail() {
   const { t, lang } = useLanguage();
@@ -59,6 +60,17 @@ export default function HomestayDetail() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; username: string; email: string } | null>(null);
 
+  // 评价相关状态
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewStats, setReviewStats] = useState<{
+    average: number;
+    total: number;
+    distribution: { [key: number]: number };
+  } | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+
   // 检查登录状态
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -102,6 +114,41 @@ export default function HomestayDetail() {
 
     fetchHomestay();
   }, [id]);
+
+  // 获取评价列表
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!id) return;
+      try {
+        setReviewsLoading(true);
+        const response = await reviewApi.getAll({ houseId: id, pageSize: 10 });
+        setReviews(response.data.reviews);
+        setReviewStats(response.data.stats);
+      } catch (err) {
+        console.error('Failed to fetch reviews:', err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [id]);
+
+  // 处理评价提交成功
+  const handleReviewSuccess = () => {
+    // 重新获取评价列表
+    const fetchReviews = async () => {
+      if (!id) return;
+      try {
+        const response = await reviewApi.getAll({ houseId: id, pageSize: 10 });
+        setReviews(response.data.reviews);
+        setReviewStats(response.data.stats);
+      } catch (err) {
+        console.error('Failed to fetch reviews:', err);
+      }
+    };
+    fetchReviews();
+  };
 
   const getLocale = () => {
     switch (lang) {
@@ -413,6 +460,49 @@ export default function HomestayDetail() {
                 ))}
               </div>
             </div>
+
+            <Separator />
+
+            {/* Reviews Section */}
+            <div id="reviews">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">
+                  <Star size={20} className="inline-block mr-2 fill-yellow-400 text-yellow-400" />
+                  {lang === 'zh' ? '评价' : lang === 'th' ? 'รีวิว' : 'Reviews'}
+                </h2>
+                {reviewStats && (
+                  <span className="text-gray-500 text-sm">
+                    {reviewStats.total} {lang === 'zh' ? '条评价' : lang === 'th' ? 'รีวิว' : 'reviews'}
+                  </span>
+                )}
+              </div>
+
+              {/* 评分统计 */}
+              {reviewStats && (
+                <RatingStats
+                  average={reviewStats.average}
+                  total={reviewStats.total}
+                  distribution={reviewStats.distribution}
+                />
+              )}
+
+              {/* 评价列表 */}
+              <div className="mt-6">
+                <ReviewList
+                  reviews={reviews}
+                  loading={reviewsLoading}
+                />
+              </div>
+
+              {/* 查看更多评价 */}
+              {reviews.length >= 10 && (
+                <div className="mt-4 text-center">
+                  <Button variant="outline">
+                    {lang === 'zh' ? '查看全部评价' : lang === 'th' ? 'ดูรีวิวทั้งหมด' : 'View all reviews'}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Column - Booking Card */}
@@ -723,6 +813,14 @@ export default function HomestayDetail() {
           </div>
         </div>
       )}
+
+      {/* Review Form Modal */}
+      <ReviewForm
+        open={showReviewForm}
+        onClose={() => setShowReviewForm(false)}
+        onSuccess={handleReviewSuccess}
+        booking={selectedBooking}
+      />
     </div>
   );
 }

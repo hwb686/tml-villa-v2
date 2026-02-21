@@ -481,4 +481,215 @@ export const favoriteApi = {
   },
 };
 
+// 评价相关类型
+export interface Review {
+  id: string;
+  rating: number;
+  content: string | null;
+  images: string[];
+  reply: string | null;
+  replyAt: string | null;
+  status: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    avatar: string | null;
+  };
+  house: {
+    id: string;
+    title: string;
+    image: string;
+  };
+  order?: {
+    orderId: string;
+    checkIn: string;
+    checkOut: string;
+  };
+}
+
+export interface CreateReviewData {
+  orderId: string;
+  houseId: string;
+  rating: number;
+  content?: string;
+  images?: string[];
+}
+
+export interface ReviewListResponse {
+  reviews: Review[];
+  total: number;
+  page: number;
+  pageSize: number;
+  stats: {
+    average: number;
+    total: number;
+    distribution: { [key: number]: number };
+  };
+}
+
+// 评价管理 API
+export const reviewApi = {
+  // 获取评价列表
+  getAll: (params?: { houseId?: string; userId?: string; page?: number; pageSize?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.houseId) queryParams.append('houseId', params.houseId);
+    if (params?.userId) queryParams.append('userId', params.userId);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    return fetchApi<ReviewListResponse>(`/reviews?${queryParams.toString()}`);
+  },
+  
+  // 获取单个评价详情
+  getById: (id: string) => fetchApi<Review>(`/reviews/${id}`),
+  
+  // 创建评价（需要登录）
+  create: (data: CreateReviewData) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<Review>('/reviews', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 更新评价（仅限创建者）
+  update: (id: string, data: { rating?: number; content?: string; images?: string[] }) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<Review>(`/reviews/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 删除评价（仅限创建者或管理员）
+  delete: (id: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<void>(`/reviews/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 管理员回复评价
+  reply: (id: string, reply: string) => {
+    return fetchAdminApi<Review>(`/reviews/${id}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ reply }),
+    });
+  },
+  
+  // 管理员更新评价状态
+  updateStatus: (id: string, status: 'active' | 'hidden') => {
+    return fetchAdminApi<Review>(`/reviews/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  },
+};
+
+// 通知相关类型
+export interface Notification {
+  id: string;
+  type: 'order_confirmed' | 'order_cancelled' | 'review_reminder' | 'system';
+  title: string;
+  content: string;
+  data: { orderId?: string; houseId?: string; [key: string]: unknown } | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface NotificationListResponse {
+  list: Notification[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  unreadCount: number;
+}
+
+// 通知 API
+export const notificationApi = {
+  // 获取通知列表
+  getAll: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.unreadOnly) queryParams.append('unreadOnly', 'true');
+    return fetchApi<NotificationListResponse>(`/notifications?${queryParams.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 获取未读数量
+  getUnreadCount: () => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<{ count: number }>('/notifications/unread-count', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 标记单条已读
+  markAsRead: (id: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<void>(`/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 标记全部已读
+  markAllAsRead: () => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<{ count: number }>('/notifications/read-all', {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 删除通知
+  delete: (id: string) => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('未登录');
+    }
+    return fetchApi<void>(`/notifications/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  },
+  
+  // 清理过期通知（管理员）
+  cleanup: () => {
+    return fetchAdminApi<{ count: number }>('/notifications/cleanup', {
+      method: 'DELETE',
+    });
+  },
+};
+
 export { fetchApi };

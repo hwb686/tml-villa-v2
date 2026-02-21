@@ -746,6 +746,81 @@
 
 ---
 
+## 会话 14 - 2026-02-21
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F011 - 消息通知
+
+### 开始时状态:
+- 已完成功能: 11
+- 当前功能: F011
+- 已知问题: 无
+
+### 完成的工作:
+- [x] 添加 Notification 数据模型到 schema.prisma
+  - 关联用户、类型、内容、已读状态
+  - 支持多种通知类型: order_confirmed, order_cancelled, review_reminder, system
+  - 附加数据以JSON格式存储
+- [x] 实现后端通知 API
+  - GET /api/notifications - 获取通知列表（分页、筛选未读）
+  - GET /api/notifications/unread-count - 获取未读数量
+  - PUT /api/notifications/:id/read - 标记单条已读
+  - PUT /api/notifications/read-all - 标记全部已读
+  - DELETE /api/notifications/:id - 删除通知
+  - DELETE /api/notifications/cleanup - 清理过期通知（管理员）
+- [x] 订单状态变更时自动创建通知
+  - 更新 PUT /api/bookings/:id/confirm - 确认订单时创建通知
+  - 更新 PUT /api/bookings/:id/cancel - 取消订单时创建通知
+- [x] 创建前端通知组件
+  - NotificationBell.tsx - 通知铃铛组件
+  - 显示未读数量红点
+  - 下拉面板显示通知列表
+  - 支持标记已读和删除
+- [x] 更新导航栏 Navbar.tsx - 添加通知铃铛
+- [x] 更新用户中心 UserCenter.tsx - 添加通知标签页
+- [x] 更新前端 API 服务 api.ts - 添加 notificationApi
+
+### API 端点:
+| 端点 | 方法 | 描述 | 权限 |
+|------|------|------|------|
+| /api/notifications | GET | 获取通知列表 | 登录用户 |
+| /api/notifications/unread-count | GET | 获取未读数量 | 登录用户 |
+| /api/notifications/:id/read | PUT | 标记单条已读 | 登录用户 |
+| /api/notifications/read-all | PUT | 标记全部已读 | 登录用户 |
+| /api/notifications/:id | DELETE | 删除通知 | 登录用户 |
+| /api/notifications/cleanup | DELETE | 清理过期通知 | 管理员 |
+
+### 测试结果:
+- [x] 获取通知列表 API 成功 ✅
+- [x] 获取未读数量 API 成功 ✅
+- [x] 标记已读 API 成功 ✅
+- [x] 标记全部已读 API 成功 ✅
+- [x] 删除通知 API 成功 ✅
+- [x] 订单确认时创建通知成功 ✅
+- [x] TypeScript 编译通过 ✅
+
+### 修改的文件:
+- backend/prisma/schema.prisma (添加 Notification 模型)
+- backend/api/db.js (添加通知 API，更新订单确认/取消 API)
+- app/src/components/notification/NotificationBell.tsx (新建)
+- app/src/sections/Navbar.tsx (添加通知铃铛)
+- app/src/pages/UserCenter.tsx (添加通知标签页)
+- app/src/services/api.ts (添加 notificationApi)
+- feature_list.json (更新 F011 状态)
+
+### 技术要点:
+- 通知类型: order_confirmed, order_cancelled, review_reminder, system
+- 通知自动创建: createNotification 辅助函数
+- 数据保留策略: 30天后清理（cleanupOldNotifications 函数）
+- 前端实时更新: 定时刷新未读数量（每分钟）
+- 下拉面板: 使用 ref 处理点击外部关闭
+
+### 结束时状态:
+- 已完成功能: 12
+- 下一个功能: F012 (员工管理)
+- 备注: 消息通知功能完整，包括后端API、前端组件、自动通知触发
+
+---
+
 ══════════════════════════════════════════════════════════════
                          日志结束 / END OF LOG
 ══════════════════════════════════════════════════════════════

@@ -7,6 +7,7 @@ import {
 import { getHashLink } from '@/lib/router';
 import { userApi } from '@/services/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import NotificationBell from '@/components/notification/NotificationBell';
 
 interface NavbarProps {
   onSearchClick: () => void;
@@ -92,6 +93,16 @@ export default function Navbar({ onSearchClick }: NavbarProps) {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Notification Bell */}
+            <NotificationBell 
+              onNotificationClick={(notification) => {
+                // 根据通知类型跳转
+                if (notification.data?.orderId) {
+                  window.location.hash = `/user?tab=orders`;
+                }
+              }}
+            />
 
             {/* User Menu */}
             <DropdownMenu>

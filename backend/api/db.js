@@ -2762,6 +2762,7 @@ app.put('/api/bookings/:id/confirm', verifyAdmin, async (req, res) => {
   try {
     const order = await prisma.order.findFirst({
       where: { orderId: req.params.id },
+      include: { house: true, user: true },
     });
     
     if (!order) {
@@ -2776,6 +2777,17 @@ app.put('/api/bookings/:id/confirm', verifyAdmin, async (req, res) => {
       where: { orderId: req.params.id },
       data: { status: 'confirmed' },
     });
+    
+    // 发送通知给用户
+    if (order.user) {
+      await createNotification(
+        order.userId,
+        'order_confirmed',
+        '订单已确认',
+        `您的订单「${order.itemName || order.house?.title || '民宿预订'}」已被确认，请按时入住。`,
+        { orderId: order.orderId, houseId: order.houseId }
+      );
+    }
     
     res.json({ 
       code: 200, 
@@ -2793,6 +2805,7 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
   try {
     const order = await prisma.order.findFirst({
       where: { orderId: req.params.id },
+      include: { house: true, user: true },
     });
     
     if (!order) {
@@ -2826,6 +2839,17 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
         }
       }
     });
+    
+    // 发送通知给用户
+    if (order.user) {
+      await createNotification(
+        order.userId,
+        'order_cancelled',
+        '订单已取消',
+        `您的订单「${order.itemName || order.house?.title || '民宿预订'}」已被取消。`,
+        { orderId: order.orderId, houseId: order.houseId }
+      );
+    }
     
     // 清除缓存
     cache.del('homestays:all');
@@ -3902,6 +3926,218 @@ app.get('/api/orders/completed', authMiddleware, async (req, res) => {
     res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching completed orders:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// ============================================
+// Notification Helper Functions
+// ============================================
+
+/**
+ * 创建通知的辅助函数
+ * @param {string} userId - 用户ID
+ * @param {string} type - 通知类型：order_confirmed, order_cancelled, review_reminder, system
+ * @param {string} title - 通知标题
+ * @param {string} content - 通知内容
+ * @param {object} data - 附加数据（可选）
+ */
+async function createNotification(userId, type, title, content, data = null) {
+  try {
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        content,
+        data: data ? JSON.stringify(data) : null,
+      },
+    });
+    return notification;
+  } catch (err) {
+    console.error('Error creating notification:', err);
+    // 不抛出错误，避免影响主流程
+    return null;
+  }
+}
+
+/**
+ * 清理30天前的已读通知
+ */
+async function cleanupOldNotifications() {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const result = await prisma.notification.deleteMany({
+      where: {
+        isRead: true,
+        createdAt: { lt: thirtyDaysAgo },
+      },
+    });
+    return result.count;
+  } catch (err) {
+    console.error('Error cleaning up notifications:', err);
+    return 0;
+  }
+}
+
+// ============================================
+// Notification APIs (消息通知)
+// ============================================
+
+// GET /api/notifications - 获取用户通知列表
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 20, unreadOnly = false } = req.query;
+    
+    const where = { userId };
+    if (unreadOnly === 'true') {
+      where.isRead = false;
+    }
+    
+    const notifications = await prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (parseInt(page) - 1) * parseInt(limit),
+      take: parseInt(limit),
+    });
+    
+    // 获取总数和未读数
+    const total = await prisma.notification.count({ where: { userId } });
+    const unreadCount = await prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+    
+    const data = notifications.map(n => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      content: n.content,
+      data: n.data ? JSON.parse(n.data) : null,
+      isRead: n.isRead,
+      createdAt: n.createdAt.toISOString(),
+    }));
+    
+    res.json({
+      code: 200,
+      data: {
+        list: data,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+        },
+        unreadCount,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/notifications/unread-count - 获取未读通知数量
+app.get('/api/notifications/unread-count', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const count = await prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+    
+    res.json({ code: 200, data: { count } });
+  } catch (err) {
+    console.error('Error fetching unread count:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/notifications/:id/read - 标记单条通知为已读
+app.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    
+    const notification = await prisma.notification.findFirst({
+      where: { id, userId },
+    });
+    
+    if (!notification) {
+      return res.status(404).json({ code: 404, msg: '通知不存在' });
+    }
+    
+    await prisma.notification.update({
+      where: { id },
+      data: { isRead: true },
+    });
+    
+    res.json({ code: 200, msg: '已标记为已读' });
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/notifications/read-all - 标记所有通知为已读
+app.put('/api/notifications/read-all', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const result = await prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+    
+    res.json({
+      code: 200,
+      msg: '已标记全部已读',
+      data: { count: result.count },
+    });
+  } catch (err) {
+    console.error('Error marking all notifications as read:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/notifications/:id - 删除单条通知
+app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    
+    const notification = await prisma.notification.findFirst({
+      where: { id, userId },
+    });
+    
+    if (!notification) {
+      return res.status(404).json({ code: 404, msg: '通知不存在' });
+    }
+    
+    await prisma.notification.delete({
+      where: { id },
+    });
+    
+    res.json({ code: 200, msg: '通知已删除' });
+  } catch (err) {
+    console.error('Error deleting notification:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/notifications/cleanup - 清理过期通知（管理员）
+app.delete('/api/notifications/cleanup', verifyAdmin, async (req, res) => {
+  try {
+    const count = await cleanupOldNotifications();
+    res.json({
+      code: 200,
+      msg: `已清理 ${count} 条过期通知`,
+      data: { count },
+    });
+  } catch (err) {
+    console.error('Error cleaning up notifications:', err);
     res.status(500).json({ code: 500, msg: err.message });
   }
 });
