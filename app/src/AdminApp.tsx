@@ -17,6 +17,7 @@ import TicketOrders from '@/pages/TicketOrders';
 import TicketConfigs from '@/pages/TicketConfigs';
 import StockManagement from '@/pages/StockManagement';
 import CalendarView from '@/pages/CalendarView';
+import UsageMonitor from '@/pages/UsageMonitor';
 
 import Finance from '@/pages/Finance';
 import Costs from '@/pages/Costs';
@@ -106,6 +107,8 @@ case 'car-rentals':
         return <Costs />;
       case 'cost-stats':
         return <CostStats />;
+      case 'usage-monitor':
+        return <UsageMonitor />;
       case 'reviews':
         return <Reviews />;
       case 'settings':

@@ -5615,10 +5615,365 @@ app.get('/api/calendar/detail', verifyAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// 免费额度监控 API (F016)
+// ============================================
+
+// 默认的服务限额配置
+const DEFAULT_LIMITS = [
+  { service: 'supabase', resourceType: 'database', limitValue: 500, unit: 'MB', warningThreshold: 80, criticalThreshold: 95, description: 'Supabase 数据库存储限制' },
+  { service: 'supabase', resourceType: 'bandwidth', limitValue: 5, unit: 'GB', warningThreshold: 80, criticalThreshold: 95, description: 'Supabase 带宽限制' },
+  { service: 'supabase', resourceType: 'storage', limitValue: 2, unit: 'GB', warningThreshold: 80, criticalThreshold: 95, description: 'Supabase 文件存储限制' },
+  { service: 'netlify', resourceType: 'bandwidth', limitValue: 100, unit: 'GB', warningThreshold: 80, criticalThreshold: 95, description: 'Netlify 带宽限制' },
+  { service: 'netlify', resourceType: 'buildMinutes', limitValue: 300, unit: 'minutes', warningThreshold: 80, criticalThreshold: 95, description: 'Netlify 构建时间限制' },
+  { service: 'render', resourceType: 'hours', limitValue: 750, unit: 'hours', warningThreshold: 80, criticalThreshold: 95, description: 'Render 运行时间限制' },
+];
+
+// 初始化默认限额配置
+async function initDefaultLimits() {
+  try {
+    for (const limit of DEFAULT_LIMITS) {
+      const existing = await prisma.usageLimit.findFirst({
+        where: { service: limit.service, resourceType: limit.resourceType },
+      });
+      if (!existing) {
+        await prisma.usageLimit.create({ data: limit });
+      }
+    }
+    console.log('Usage limits initialized');
+  } catch (err) {
+    console.error('Failed to initialize usage limits:', err);
+  }
+}
+
+// GET /api/usage/limits - 获取所有服务限额配置
+app.get('/api/usage/limits', verifyAdmin, async (req, res) => {
+  try {
+    const limits = await prisma.usageLimit.findMany({
+      orderBy: [{ service: 'asc' }, { resourceType: 'asc' }],
+    });
+    res.json({ code: 200, data: limits });
+  } catch (err) {
+    console.error('Error fetching usage limits:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/usage/limits/:id - 更新限额配置
+app.put('/api/usage/limits/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limitValue, warningThreshold, criticalThreshold, description } = req.body;
+    
+    const updated = await prisma.usageLimit.update({
+      where: { id },
+      data: { limitValue, warningThreshold, criticalThreshold, description },
+    });
+    
+    res.json({ code: 200, data: updated, msg: '限额配置已更新' });
+  } catch (err) {
+    console.error('Error updating usage limit:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/usage/logs - 获取使用量日志（带分页和筛选）
+app.get('/api/usage/logs', verifyAdmin, async (req, res) => {
+  try {
+    const { service, resourceType, startDate, endDate, page = 1, pageSize = 30 } = req.query;
+    
+    const where = {};
+    if (service) where.service = service;
+    if (resourceType) where.resourceType = resourceType;
+    if (startDate || endDate) {
+      where.recordedAt = {};
+      if (startDate) where.recordedAt.gte = new Date(startDate);
+      if (endDate) where.recordedAt.lte = new Date(endDate);
+    }
+    
+    const [logs, total] = await Promise.all([
+      prisma.usageLog.findMany({
+        where,
+        orderBy: { recordedAt: 'desc' },
+        skip: (parseInt(page) - 1) * parseInt(pageSize),
+        take: parseInt(pageSize),
+      }),
+      prisma.usageLog.count({ where }),
+    ]);
+    
+    res.json({
+      code: 200,
+      data: {
+        logs,
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          total,
+          totalPages: Math.ceil(total / parseInt(pageSize)),
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching usage logs:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/usage/logs - 记录使用量（手动或定时任务）
+app.post('/api/usage/logs', verifyAdmin, async (req, res) => {
+  try {
+    const { service, resourceType, usedValue, unit } = req.body;
+    
+    if (!service || !resourceType || usedValue === undefined) {
+      return res.status(400).json({ code: 400, msg: '缺少必要参数' });
+    }
+    
+    // 获取限额配置
+    let limit = await prisma.usageLimit.findFirst({
+      where: { service, resourceType },
+    });
+    
+    // 如果没有配置，使用默认值
+    if (!limit) {
+      const defaultLimit = DEFAULT_LIMITS.find(
+        l => l.service === service && l.resourceType === resourceType
+      );
+      if (defaultLimit) {
+        limit = await prisma.usageLimit.create({ data: defaultLimit });
+      } else {
+        return res.status(400).json({ code: 400, msg: '未找到对应的限额配置' });
+      }
+    }
+    
+    // 计算使用百分比
+    const percentage = (usedValue / limit.limitValue) * 100;
+    
+    // 判断状态
+    let status = 'normal';
+    if (percentage >= limit.criticalThreshold) {
+      status = 'critical';
+    } else if (percentage >= limit.warningThreshold) {
+      status = 'warning';
+    }
+    
+    const log = await prisma.usageLog.create({
+      data: {
+        service,
+        resourceType,
+        usedValue,
+        unit: unit || limit.unit,
+        percentage,
+        status,
+      },
+    });
+    
+    res.json({ code: 200, data: log, msg: '使用量已记录' });
+  } catch (err) {
+    console.error('Error creating usage log:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/usage/status - 获取当前各服务使用状态（Dashboard用）
+app.get('/api/usage/status', verifyAdmin, async (req, res) => {
+  try {
+    // 获取所有限额配置
+    const limits = await prisma.usageLimit.findMany();
+    
+    // 获取每个服务+资源类型的最新记录
+    const statusList = await Promise.all(
+      limits.map(async (limit) => {
+        const latestLog = await prisma.usageLog.findFirst({
+          where: { service: limit.service, resourceType: limit.resourceType },
+          orderBy: { recordedAt: 'desc' },
+        });
+        
+        // 获取最近7天的趋势
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const trend = await prisma.usageLog.findMany({
+          where: {
+            service: limit.service,
+            resourceType: limit.resourceType,
+            recordedAt: { gte: sevenDaysAgo },
+          },
+          orderBy: { recordedAt: 'asc' },
+          select: { recordedAt: true, usedValue: true, percentage: true },
+        });
+        
+        return {
+          id: limit.id,
+          service: limit.service,
+          resourceType: limit.resourceType,
+          limitValue: limit.limitValue,
+          unit: limit.unit,
+          warningThreshold: limit.warningThreshold,
+          criticalThreshold: limit.criticalThreshold,
+          description: limit.description,
+          current: latestLog ? {
+            usedValue: latestLog.usedValue,
+            percentage: latestLog.percentage,
+            status: latestLog.status,
+            recordedAt: latestLog.recordedAt,
+          } : {
+            usedValue: 0,
+            percentage: 0,
+            status: 'normal',
+            recordedAt: null,
+          },
+          trend: trend.map(t => ({
+            date: t.recordedAt.toISOString().split('T')[0],
+            usedValue: t.usedValue,
+            percentage: t.percentage,
+          })),
+        };
+      })
+    );
+    
+    // 按服务分组
+    const groupedByService = {};
+    for (const item of statusList) {
+      if (!groupedByService[item.service]) {
+        groupedByService[item.service] = [];
+      }
+      groupedByService[item.service].push(item);
+    }
+    
+    // 计算预警数量
+    const warnings = statusList.filter(s => s.current.status === 'warning').length;
+    const criticals = statusList.filter(s => s.current.status === 'critical').length;
+    
+    res.json({
+      code: 200,
+      data: {
+        services: groupedByService,
+        summary: {
+          total: statusList.length,
+          normal: statusList.filter(s => s.current.status === 'normal').length,
+          warning: warnings,
+          critical: criticals,
+          hasAlerts: warnings > 0 || criticals > 0,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching usage status:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/usage/alerts - 获取预警列表
+app.get('/api/usage/alerts', verifyAdmin, async (req, res) => {
+  try {
+    const limits = await prisma.usageLimit.findMany();
+    
+    const alerts = [];
+    for (const limit of limits) {
+      const latestLog = await prisma.usageLog.findFirst({
+        where: { service: limit.service, resourceType: limit.resourceType },
+        orderBy: { recordedAt: 'desc' },
+      });
+      
+      if (latestLog && (latestLog.status === 'warning' || latestLog.status === 'critical')) {
+        alerts.push({
+          service: limit.service,
+          resourceType: limit.resourceType,
+          usedValue: latestLog.usedValue,
+          limitValue: limit.limitValue,
+          unit: limit.unit,
+          percentage: latestLog.percentage,
+          status: latestLog.status,
+          message: `${limit.service} ${limit.resourceType} 使用率已达 ${latestLog.percentage.toFixed(1)}%，超过${latestLog.status === 'critical' ? '严重' : '预警'}阈值`,
+          recordedAt: latestLog.recordedAt,
+        });
+      }
+    }
+    
+    // 按状态和时间排序
+    alerts.sort((a, b) => {
+      if (a.status === 'critical' && b.status !== 'critical') return -1;
+      if (a.status !== 'critical' && b.status === 'critical') return 1;
+      return new Date(b.recordedAt) - new Date(a.recordedAt);
+    });
+    
+    res.json({ code: 200, data: alerts });
+  } catch (err) {
+    console.error('Error fetching usage alerts:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/usage/logs/cleanup - 清理过期的使用量日志（只保留30天）
+app.delete('/api/usage/logs/cleanup', verifyAdmin, async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const result = await prisma.usageLog.deleteMany({
+      where: { recordedAt: { lt: thirtyDaysAgo } },
+    });
+    
+    res.json({ 
+      code: 200, 
+      msg: `已清理 ${result.count} 条过期日志`,
+      data: { deletedCount: result.count },
+    });
+  } catch (err) {
+    console.error('Error cleaning up usage logs:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/usage/simulate - 模拟使用量数据（用于测试和演示）
+app.post('/api/usage/simulate', verifyAdmin, async (req, res) => {
+  try {
+    const limits = await prisma.usageLimit.findMany();
+    const created = [];
+    
+    for (const limit of limits) {
+      // 生成模拟的当前使用量（30%-90%之间随机）
+      const minPercent = 30;
+      const maxPercent = 90;
+      const randomPercent = minPercent + Math.random() * (maxPercent - minPercent);
+      const usedValue = Math.round((randomPercent / 100) * limit.limitValue * 100) / 100;
+      
+      const percentage = (usedValue / limit.limitValue) * 100;
+      let status = 'normal';
+      if (percentage >= limit.criticalThreshold) status = 'critical';
+      else if (percentage >= limit.warningThreshold) status = 'warning';
+      
+      const log = await prisma.usageLog.create({
+        data: {
+          service: limit.service,
+          resourceType: limit.resourceType,
+          usedValue,
+          unit: limit.unit,
+          percentage,
+          status,
+        },
+      });
+      
+      created.push(log);
+    }
+    
+    res.json({ 
+      code: 200, 
+      msg: `已生成 ${created.length} 条模拟数据`,
+      data: created,
+    });
+  } catch (err) {
+    console.error('Error simulating usage data:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  // 在服务器启动后初始化默认数据（不阻塞服务器）
+  initDefaultLimits();
 });
 
 module.exports = app;

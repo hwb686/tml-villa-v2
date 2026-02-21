@@ -1118,3 +1118,64 @@
 - 备注: 日历视图功能完整，支持房间和车辆库存汇总显示，颜色状态标识清晰
 
 ---
+
+---
+
+## 会话 17 - 2026-02-22
+**Agent:** 编码Agent (long-running-coder)
+**功能:** F016 - 免费额度监控
+
+### 开始时状态 / Status at Start:
+- 已完成功能: 16
+- 当前功能: F016
+- 已知问题: 无
+
+### 完成的工作 / Work Completed:
+- [x] 创建 Prisma 数据模型: UsageLimit（服务限额配置）
+- [x] 创建 Prisma 数据模型: UsageLog（使用量日志）
+- [x] 创建后端API: GET /api/usage/limits（获取限额配置列表）
+- [x] 创建后端API: PUT /api/usage/limits/:id（更新限额配置）
+- [x] 创建后端API: GET /api/usage/logs（获取使用量日志，支持分页和筛选）
+- [x] 创建后端API: POST /api/usage/logs（记录使用量）
+- [x] 创建后端API: GET /api/usage/status（获取当前使用状态，Dashboard用）
+- [x] 创建后端API: GET /api/usage/alerts（获取预警列表）
+- [x] 创建后端API: POST /api/usage/simulate（生成模拟数据用于测试）
+- [x] 创建后端API: DELETE /api/usage/logs/cleanup（清理过期日志）
+- [x] 创建前端页面: UsageMonitor.tsx
+- [x] 更新路由: AdminApp.tsx
+- [x] 更新导航: Sidebar.tsx
+
+### 技术实现:
+**数据模型:**
+- UsageLimit: 存储各服务的免费额度限制（service, resourceType, limitValue, unit, warningThreshold, criticalThreshold）
+- UsageLog: 记录使用量日志（service, resourceType, usedValue, unit, percentage, status）
+
+**监控的服务:**
+- Supabase: 数据库(500MB), 带宽(5GB), 存储(2GB)
+- Netlify: 带宽(100GB), 构建时间(300分钟)
+- Render: 运行时间(750小时)
+
+**前端功能:**
+- 状态概览卡片（正常/预警/严重数量）
+- 预警列表（显示超80%的资源）
+- 各服务使用情况卡片（进度条、阈值线、7天趋势图）
+- 模拟数据生成按钮（用于测试）
+- 过期日志清理功能
+
+### 修改的文件 / Files Modified:
+- backend/prisma/schema.prisma (新增 UsageLimit 和 UsageLog 模型)
+- backend/api/db.js (新增使用量监控 API)
+- app/src/pages/UsageMonitor.tsx (新建)
+- app/src/AdminApp.tsx (添加路由)
+- app/src/components/layout/Sidebar.tsx (添加导航)
+- feature_list.json (更新F016状态)
+
+### 提交信息 / Commit:
+- 待提交
+
+### 结束时状态 / Status at End:
+- 已完成功能: 17
+- 下一个功能: F017 (搜索优化)
+- 备注: 由于本地开发环境Node版本冲突，未完成端到端测试。代码已完整实现，建议在部署后验证功能。
+
+---

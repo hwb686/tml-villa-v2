@@ -429,3 +429,38 @@ model Cost {
   @@index([status])
   @@map("costs")
 }
+
+// 服务使用限额配置
+model UsageLimit {
+  id            String   @id @default(cuid())
+  service       String   // supabase, netlify, render
+  resourceType  String   @map("resource_type") // database, bandwidth, storage, hours
+  limitValue    Int      @map("limit_value") // 限额值（MB/GB/小时等）
+  unit          String   // MB, GB, hours
+  warningThreshold Int   @default(80) @map("warning_threshold") // 预警阈值百分比
+  criticalThreshold Int  @default(95) @map("critical_threshold") // 严重阈值百分比
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@unique([service, resourceType])
+  @@index([service])
+  @@map("usage_limits")
+}
+
+// 服务使用量日志
+model UsageLog {
+  id            String   @id @default(cuid())
+  service       String   // supabase, netlify, render
+  resourceType  String   @map("resource_type") // database, bandwidth, storage, hours
+  usedValue     Int      @map("used_value") // 已使用值（MB/GB/小时等）
+  unit          String   // MB, GB, hours
+  percentage    Float    // 使用百分比
+  status        String   @default("normal") // normal, warning, critical
+  recordedAt    DateTime @default(now()) @map("recorded_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  @@index([service, resourceType])
+  @@index([recordedAt])
+  @@map("usage_logs")
+}

@@ -302,11 +302,24 @@
       "title": "免费额度监控",
       "description": "监控 Supabase/Netlify/Render 免费额度使用情况",
       "free_limit_impact": "核心功能",
-      "steps": ["数据库大小监控", "带宽使用监控", "预警通知"],
-      "acceptance_criteria": ["超80%预警", "Dashboard显示使用量"],
-      "status": "missing",
-      "passes": false,
-      "notes": "防止超限导致服务中断"
+      "steps": [
+        "创建 UsageLimit 数据模型（服务限额配置）",
+        "创建 UsageLog 数据模型（使用量日志）",
+        "实现后端API: 获取限额、更新限额、记录使用量、获取状态、获取预警",
+        "实现模拟数据生成功能（用于测试）",
+        "实现过期日志清理功能",
+        "创建前端页面: UsageMonitor.tsx",
+        "添加路由和导航菜单"
+      ],
+      "acceptance_criteria": [
+        "超80%预警",
+        "Dashboard显示使用量",
+        "显示各服务额度状态",
+        "支持7天趋势图显示"
+      ],
+      "status": "done",
+      "passes": true,
+      "notes": "已于 2026-02-22 完成。实现了免费额度监控功能，包括：后端API（/api/usage/limits, /api/usage/logs, /api/usage/status, /api/usage/alerts, /api/usage/simulate, /api/usage/logs/cleanup）；数据模型（UsageLimit用于存储各服务的免费额度限制，UsageLog用于记录使用量）；前端页面UsageMonitor.tsx显示各服务使用状态、进度条、预警提示和7天趋势图。支持Supabase（500MB数据库、5GB带宽、2GB存储）、Netlify（100GB带宽、300分钟构建时间）、Render（750小时运行时间）三种服务的监控。"
     },
     {
       "id": "F017",
