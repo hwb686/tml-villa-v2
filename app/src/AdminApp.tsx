@@ -10,6 +10,7 @@ import CarRentals from '@/pages/CarRentals';
 import CarConfigs from '@/pages/CarConfigs';
 import TicketOrders from '@/pages/TicketOrders';
 import TicketConfigs from '@/pages/TicketConfigs';
+import StockManagement from '@/pages/StockManagement';
 
 import Finance from '@/pages/Finance';
 import Settings from '@/pages/Settings';
@@ -60,6 +61,8 @@ export default function AdminApp() {
         return <Categories />;
       case 'homestays':
         return <HomestayManage />;
+      case 'stock':
+        return <StockManagement />;
       case 'orders':
         const orderType = path.split('/')[1] as 'homestay' | 'car' | 'ticket' | 'dining' | undefined;
         return <Orders type={orderType} />;

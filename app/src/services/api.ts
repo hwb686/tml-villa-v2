@@ -61,12 +61,31 @@ export const bookingApi = {
 };
 
 export const stockApi = {
-  get: (homestayId: string, startDate: string, endDate: string) => 
-    fetchApi<StockInfo[]>(`/homestays/${homestayId}/stock?startDate=${startDate}&endDate=${endDate}`),
-  init: (homestayId: string, stockCount: number, days?: number) =>
+  get: (homestayId: string, params: { startDate?: string; endDate?: string; month?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params.month) queryParams.append('month', params.month);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    return fetchApi<StockData>(`/homestays/${homestayId}/stock?${queryParams.toString()}`);
+  },
+  init: (homestayId: string, data: { totalStock: number; startDate?: string; endDate?: string; price?: number }) =>
     fetchApi<InitStockResult>(`/homestays/${homestayId}/init-stock`, { 
       method: 'POST', 
-      body: JSON.stringify({ stockCount, days }) 
+      body: JSON.stringify(data) 
+    }),
+  update: (homestayId: string, date: string, data: { totalStock?: number; price?: number }) =>
+    fetchApi<StockDayInfo>(`/homestays/${homestayId}/stock/${date}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  batchUpdate: (homestayId: string, data: { dates: string[]; totalStock: number; price?: number }) =>
+    fetchApi<InitStockResult>(`/homestays/${homestayId}/batch-stock`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  cleanup: (homestayId: string) =>
+    fetchApi<{ count: number }>(`/homestays/${homestayId}/stock/cleanup`, {
+      method: 'DELETE',
     }),
 };
 
@@ -243,7 +262,8 @@ export interface BookingDetail {
 }
 export interface CancelResult { orderId: string; status: string; }
 export interface ConfirmResult { orderId: string; status: string; }
-export interface StockInfo { date: string; stockCount: number; }
+export interface StockDayInfo { date: string; total: number; booked: number; available: number; price: number | null; }
+export interface StockData { [date: string]: StockDayInfo; }
 export interface InitStockResult { count: number; }
 export interface User { id: string; name: string; email: string; avatar?: string; phone?: string; isHost: boolean; }
 export interface RegisterData { name: string; email: string; password: string; phone?: string; }

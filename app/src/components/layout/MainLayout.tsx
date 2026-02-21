@@ -21,8 +21,7 @@ export default function MainLayout({ children, currentPath, onNavigate, onLogout
     <div className="min-h-screen bg-gray-50">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} currentPath={currentPath} onNavigate={onNavigate} onLogout={onLogout} />
       <Header collapsed={collapsed} currentPath={currentPath} onLogout={onLogout} />
-      {/* Mobile: no padding, Desktop: padding based on sidebar state */}
-      <main className={`pt-16 transition-all duration-300 ${isMobile ? 'pl-0' : collapsed ? 'pl-16' : 'pl-64'}`}>
+      <main className={`pt-16 transition-all duration-300 ${isMobile ? '' : collapsed ? 'pl-16' : 'pl-64'}`}>
         <div className="p-4 md:p-6">{children}</div>
       </main>
     </div>

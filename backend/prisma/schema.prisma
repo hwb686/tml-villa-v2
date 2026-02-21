@@ -53,16 +53,19 @@ model Homestay {
 }
 
 model HouseStock {
-  id        String   @id @default(cuid())
-  houseId   String   @map("house_id")
-  date      DateTime @db.Date
-  stockCount Int     @map("stock_count")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  houseId     String   @map("house_id")
+  date        DateTime @db.Date
+  totalStock  Int      @default(1) @map("total_stock")
+  bookedStock Int      @default(0) @map("booked_stock")
+  price       Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-  house     Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  house       Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
   
   @@unique([houseId, date])
+  @@index([date])
   @@map("house_stocks")
 }
 

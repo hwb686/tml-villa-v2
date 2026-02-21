@@ -1678,16 +1678,17 @@ app.post('/api/bookings', async (req, res) => {
           where: { houseId_date: { houseId: homestayId, date } },
         });
         
-        if (!stock || stock.stockCount < 1) {
+        const available = stock ? stock.totalStock - stock.bookedStock : 0;
+        if (!stock || available < 1) {
           throw new Error(`日期 ${date.toISOString().split('T')[0]} 无可用房源`);
         }
       }
       
-      // 扣减库存
+      // 扣减库存（增加已预订数量）
       for (const date of dates) {
         await tx.houseStock.update({
           where: { houseId_date: { houseId: homestayId, date } },
-          data: { stockCount: { decrement: 1 } },
+          data: { bookedStock: { increment: 1 } },
         });
       }
       
@@ -1886,13 +1887,13 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
         data: { status: 'cancelled' },
       });
       
-      // 释放库存
+      // 释放库存（减少已预订数量）
       if (order.checkIn && order.checkOut) {
         const dates = getDatesInRange(order.checkIn, order.checkOut);
         for (const date of dates) {
           await tx.houseStock.update({
             where: { houseId_date: { houseId: order.houseId, date } },
-            data: { stockCount: { increment: 1 } },
+            data: { bookedStock: { decrement: 1 } },
           });
         }
       }
@@ -1915,29 +1916,46 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
 // GET /api/homestays/:id/stock - 获取民宿库存信息
 app.get('/api/homestays/:id/stock', async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, month } = req.query;
     
-    if (!startDate || !endDate) {
-      return res.status(400).json({ code: 400, msg: '请提供开始和结束日期' });
+    let queryStartDate, queryEndDate;
+    
+    // 支持 month 参数 (格式: 2026-02)
+    if (month) {
+      const [year, mon] = month.split('-').map(Number);
+      queryStartDate = new Date(year, mon - 1, 1);
+      queryEndDate = new Date(year, mon, 0); // 月末
+    } else if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      return res.status(400).json({ code: 400, msg: '请提供 month 或 startDate/endDate 参数' });
     }
     
     const stocks = await prisma.houseStock.findMany({
       where: {
         houseId: req.params.id,
         date: {
-          gte: new Date(startDate),
-          lte: new Date(endDate),
+          gte: queryStartDate,
+          lte: queryEndDate,
         },
       },
       orderBy: { date: 'asc' },
     });
     
-    const formatted = stocks.map(s => ({
-      date: s.date.toISOString().split('T')[0],
-      stockCount: s.stockCount,
-    }));
+    // 转换为日期键对象格式
+    const data = {};
+    for (const s of stocks) {
+      const dateStr = s.date.toISOString().split('T')[0];
+      data[dateStr] = {
+        total: s.totalStock,
+        booked: s.bookedStock,
+        available: s.totalStock - s.bookedStock,
+        price: s.price,
+      };
+    }
     
-    res.json({ code: 200, data: formatted });
+    res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching stock:', err);
     res.status(500).json({ code: 500, msg: err.message });
@@ -1947,44 +1965,201 @@ app.get('/api/homestays/:id/stock', async (req, res) => {
 // POST /api/homestays/:id/init-stock - 初始化库存（管理员）
 app.post('/api/homestays/:id/init-stock', verifyAdmin, async (req, res) => {
   try {
-    const { stockCount, days } = req.body;
+    const { totalStock, startDate, endDate, price } = req.body;
     
-    if (!stockCount || stockCount < 1) {
+    if (!totalStock || totalStock < 1) {
       return res.status(400).json({ code: 400, msg: '库存数量必须大于0' });
     }
     
-    // 默认初始化未来90天的库存
-    const targetDays = days || 90;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const stocks = [];
-    for (let i = 0; i < targetDays; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i);
-      stocks.push({
-        houseId: req.params.id,
-        date,
-        stockCount,
-      });
+    // 计算日期范围
+    let queryStartDate, queryEndDate;
+    if (startDate && endDate) {
+      queryStartDate = new Date(startDate);
+      queryEndDate = new Date(endDate);
+    } else {
+      // 默认初始化未来90天
+      queryStartDate = new Date();
+      queryStartDate.setHours(0, 0, 0, 0);
+      queryEndDate = new Date(queryStartDate);
+      queryEndDate.setDate(queryEndDate.getDate() + 90);
     }
     
-    // 批量创建或更新库存
-    const result = await prisma.houseStock.createMany({
-      data: stocks,
-      skipDuplicates: true,
-    });
+    // 生成库存数据
+    const stocks = [];
+    const current = new Date(queryStartDate);
+    while (current <= queryEndDate) {
+      stocks.push({
+        houseId: req.params.id,
+        date: new Date(current),
+        totalStock,
+        bookedStock: 0,
+        price: price || null,
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    
+    // 使用 upsert 批量创建或更新库存
+    let count = 0;
+    for (const stock of stocks) {
+      await prisma.houseStock.upsert({
+        where: { houseId_date: { houseId: stock.houseId, date: stock.date } },
+        update: { totalStock: stock.totalStock, price: stock.price },
+        create: stock,
+      });
+      count++;
+    }
     
     // 清除缓存
     cache.del('homestays:all');
     
     res.json({ 
       code: 200, 
-      msg: `成功初始化 ${result.count} 天的库存`,
-      data: { count: result.count }
+      msg: `成功初始化 ${count} 天的库存`,
+      data: { count }
     });
   } catch (err) {
     console.error('Error initializing stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/homestays/:id/stock/:date - 调整单日库存（管理员）
+app.put('/api/homestays/:id/stock/:date', verifyAdmin, async (req, res) => {
+  try {
+    const { totalStock, price } = req.body;
+    const date = new Date(req.params.date);
+    
+    if (isNaN(date.getTime())) {
+      return res.status(400).json({ code: 400, msg: '无效的日期格式' });
+    }
+    
+    // 检查库存是否存在
+    let stock = await prisma.houseStock.findUnique({
+      where: { houseId_date: { houseId: req.params.id, date } },
+    });
+    
+    if (stock) {
+      // 更新现有库存
+      const updateData = {};
+      if (totalStock !== undefined) {
+        if (totalStock < stock.bookedStock) {
+          return res.status(400).json({ 
+            code: 400, 
+            msg: `总库存不能小于已预订数量 (${stock.bookedStock})` 
+          });
+        }
+        updateData.totalStock = totalStock;
+      }
+      if (price !== undefined) {
+        updateData.price = price;
+      }
+      
+      stock = await prisma.houseStock.update({
+        where: { houseId_date: { houseId: req.params.id, date } },
+        data: updateData,
+      });
+    } else {
+      // 创建新库存
+      stock = await prisma.houseStock.create({
+        data: {
+          houseId: req.params.id,
+          date,
+          totalStock: totalStock || 1,
+          bookedStock: 0,
+          price: price || null,
+        },
+      });
+    }
+    
+    // 清除缓存
+    cache.del('homestays:all');
+    
+    res.json({
+      code: 200,
+      msg: '库存更新成功',
+      data: {
+        date: stock.date.toISOString().split('T')[0],
+        total: stock.totalStock,
+        booked: stock.bookedStock,
+        available: stock.totalStock - stock.bookedStock,
+        price: stock.price,
+      },
+    });
+  } catch (err) {
+    console.error('Error updating stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/homestays/:id/batch-stock - 批量设置库存（管理员）
+app.post('/api/homestays/:id/batch-stock', verifyAdmin, async (req, res) => {
+  try {
+    const { dates, totalStock, price } = req.body;
+    
+    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({ code: 400, msg: '请提供日期数组' });
+    }
+    
+    if (!totalStock || totalStock < 1) {
+      return res.status(400).json({ code: 400, msg: '库存数量必须大于0' });
+    }
+    
+    let count = 0;
+    for (const dateStr of dates) {
+      const date = new Date(dateStr);
+      
+      await prisma.houseStock.upsert({
+        where: { houseId_date: { houseId: req.params.id, date } },
+        update: { 
+          totalStock,
+          ...(price !== undefined && { price }),
+        },
+        create: {
+          houseId: req.params.id,
+          date,
+          totalStock,
+          bookedStock: 0,
+          price: price || null,
+        },
+      });
+      count++;
+    }
+    
+    // 清除缓存
+    cache.del('homestays:all');
+    
+    res.json({
+      code: 200,
+      msg: `成功设置 ${count} 天的库存`,
+      data: { count },
+    });
+  } catch (err) {
+    console.error('Error batch updating stock:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/homestays/:id/stock/cleanup - 清理过期库存（管理员）
+app.delete('/api/homestays/:id/stock/cleanup', verifyAdmin, async (req, res) => {
+  try {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - 1); // 昨天
+    
+    const result = await prisma.houseStock.deleteMany({
+      where: {
+        houseId: req.params.id,
+        date: { lt: cutoff },
+      },
+    });
+    
+    res.json({
+      code: 200,
+      msg: `已清理 ${result.count} 条过期库存`,
+      data: { count: result.count },
+    });
+  } catch (err) {
+    console.error('Error cleaning up stock:', err);
     res.status(500).json({ code: 500, msg: err.message });
   }
 });
