@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
-import { costApi, Cost, CostType, CostTypeInfo, CreateCostData } from '@/services/api';
+import { costApi, type Cost, type CostType, type CostTypeInfo, type CreateCostData } from '@/services/api';
 
 const COST_TYPE_COLORS: Record<CostType, string> = {
   rent: '#1890ff',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { userApi, bookingApi, favoriteApi, reviewApi, notificationApi, Notification } from '@/services/api';
-import type { Review } from '@/services/api';
+import { userApi, bookingApi, favoriteApi, reviewApi, notificationApi } from '@/services/api';
+import type { Notification, Review } from '@/services/api';
 import { getHashLink } from '@/lib/router';
 import Navbar from '@/sections/Navbar';
 import Footer from '@/sections/Footer';

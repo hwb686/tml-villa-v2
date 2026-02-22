@@ -1,6 +1,6 @@
 // API Service Layer for TML Villa
 // Configure VITE_API_BASE_URL in your environment to connect to your backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const FUNCTIONS_BASE = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || '';
 
 async function callFunction<T>(name: string): Promise<ApiResponse<T>> {

@@ -9,7 +9,7 @@ import {
   BarChart, Bar,
 } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Percent, Calendar } from 'lucide-react';
-import { costApi, CostStatsData, CostByType, CostMonthlyTrend } from '@/services/api';
+import { costApi, type CostStatsData, type CostByType, type CostMonthlyTrend } from '@/services/api';
 
 const COLORS = ['#1890ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#8c8c8c'];
 

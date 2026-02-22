@@ -3,7 +3,8 @@ import { Bell, Check, CheckCheck, Trash2, Package, XCircle, Star, Info, X } from
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { notificationApi, Notification } from '@/services/api';
+import { notificationApi } from '@/services/api';
+import type { Notification } from '@/services/api';
 import { cn } from '@/lib/utils';
 
 interface NotificationBellProps {
