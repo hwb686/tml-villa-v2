@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Heart, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { Homestay } from '@/services/api';
+import { favoriteApi, type Homestay } from '@/services/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import { getHashLink } from '@/lib/router';
+import { useToast } from '@/components/ui/use-toast';
 
 interface HomestayCardProps {
   homestay: Homestay;
@@ -11,8 +12,46 @@ interface HomestayCardProps {
 
 export default function HomestayCard({ homestay }: HomestayCardProps) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [currentImage, setCurrentImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(homestay.isFavorite);
+  const [isToggling, setIsToggling] = useState(false);
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: '请先登录',
+        description: '登录后即可收藏房源',
+        variant: 'default',
+      });
+      window.location.hash = getHashLink('/login');
+      return;
+    }
+
+    if (isToggling) return;
+    
+    setIsToggling(true);
+    try {
+      const response = await favoriteApi.toggle(homestay.id);
+      setIsFavorite(response.data.isFavorite);
+      toast({
+        title: response.data.isFavorite ? '已收藏' : '已取消收藏',
+        duration: 1500,
+      });
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      toast({
+        title: '操作失败',
+        description: '请稍后重试',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(price);
@@ -34,10 +73,11 @@ export default function HomestayCard({ homestay }: HomestayCardProps) {
         
         {/* Heart Button */}
         <button
-          onClick={(e) => { e.stopPropagation(); setIsFavorite(!isFavorite); }}
+          onClick={handleFavoriteClick}
+          disabled={isToggling}
           className="heart-btn"
         >
-          <Heart size={18} className={isFavorite ? 'fill-champagne text-champagne' : 'text-gray-600'} />
+          <Heart size={18} className={`${isFavorite ? 'fill-champagne text-champagne' : 'text-gray-600'} ${isToggling ? 'animate-pulse' : ''}`} />
         </button>
 
         {/* Image Dots */}

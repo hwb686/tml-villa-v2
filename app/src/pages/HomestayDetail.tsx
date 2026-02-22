@@ -10,15 +10,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/hooks/useLanguage';
-import { homestayApi, bookingApi, reviewApi, type Homestay, type Review } from '@/services/api';
+import { homestayApi, bookingApi, reviewApi, favoriteApi, type Homestay, type Review } from '@/services/api';
 import { platformSyncApi } from '@/services/platformSyncApi';
 import { format } from 'date-fns';
 import { zhCN, enUS, th } from 'date-fns/locale';
 import { getHashLink } from '@/lib/router';
 import { StarRating, RatingStats, ReviewList, ReviewForm } from '@/components/review';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function HomestayDetail() {
   const { t, lang } = useLanguage();
+  const { toast } = useToast();
   const [id, setId] = useState<string>('');
   const [homestay, setHomestay] = useState<Homestay | null>(null);
   
@@ -33,6 +35,7 @@ export default function HomestayDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [checkIn, setCheckIn] = useState<Date | undefined>(undefined);
   const [checkOut, setCheckOut] = useState<Date | undefined>(undefined);
   const [guests, setGuests] = useState(1);
@@ -70,6 +73,41 @@ export default function HomestayDetail() {
   } | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+
+  const handleFavoriteToggle = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: lang === 'zh' ? '请先登录' : lang === 'th' ? 'กรุณาเข้าสู่ระบบ' : 'Please login',
+        description: lang === 'zh' ? '登录后即可收藏房源' : lang === 'th' ? 'เข้าสู่ระบบเพื่อบันทึกที่พัก' : 'Login to save your favorite',
+      });
+      window.location.hash = getHashLink('/login');
+      return;
+    }
+
+    if (isTogglingFavorite || !homestay) return;
+
+    setIsTogglingFavorite(true);
+    try {
+      const response = await favoriteApi.toggle(homestay.id);
+      setIsFavorite(response.data.isFavorite);
+      toast({
+        title: response.data.isFavorite 
+          ? (lang === 'zh' ? '已收藏' : lang === 'th' ? 'บันทึกแล้ว' : 'Saved')
+          : (lang === 'zh' ? '已取消收藏' : lang === 'th' ? 'ยกเลิกแล้ว' : 'Removed'),
+        duration: 1500,
+      });
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      toast({
+        title: lang === 'zh' ? '操作失败' : lang === 'th' ? 'เกิดข้อผิดพลาด' : 'Failed',
+        description: lang === 'zh' ? '请稍后重试' : lang === 'th' ? 'กรุณาลองอีกครั้ง' : 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
 
   // 检查登录状态
   useEffect(() => {
@@ -292,10 +330,11 @@ export default function HomestayDetail() {
             </button>
             <div className="flex items-center gap-3">
               <button 
-                onClick={() => setIsFavorite(!isFavorite)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                onClick={handleFavoriteToggle}
+                disabled={isTogglingFavorite}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
               >
-                <Heart size={20} className={isFavorite ? 'fill-champagne text-champagne' : 'text-gray-600'} />
+                <Heart size={20} className={`${isFavorite ? 'fill-champagne text-champagne' : 'text-gray-600'} ${isTogglingFavorite ? 'animate-pulse' : ''}`} />
               </button>
               <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                 <Share size={20} className="text-gray-600" />

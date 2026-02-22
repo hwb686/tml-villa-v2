@@ -338,8 +338,9 @@
       "title": "收藏功能",
       "description": "用户收藏民宿",
       "free_limit_impact": "无影响",
-      "status": "partial",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已于 2026-02-22 完成。修复了前端收藏功能：1) HomestayCard 组件添加了真实的API调用，点击heart按钮会调用favoriteApi.toggle; 2) HomestayDetail 页面添加了真实的API调用; 3) 未登录用户会被提示登录并跳转到登录页; 4) 添加了加载状态和错误处理; 5) 成功后显示Toast提示"
     },
     {
       "id": "F019",
