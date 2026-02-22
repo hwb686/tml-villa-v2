@@ -49,8 +49,8 @@ export default function StaffSchedule() {
   // 加载员工列表
   const loadStaffs = async () => {
     try {
-      const data = await staffApi.getAll({ status: 'active' });
-      setStaffs(data);
+      const response = await staffApi.getAll({ status: 'active' });
+      setStaffs(response.data);
     } catch (error) {
       console.error('Failed to load staffs:', error);
     }
@@ -69,8 +69,8 @@ export default function StaffSchedule() {
         params.staffType = filterType;
       }
       
-      const data = await staffApi.getCalendar(params);
-      setCalendar(data);
+      const response = await staffApi.getCalendar(params);
+      setCalendar(response.data);
     } catch (error) {
       console.error('Failed to load calendar:', error);
       toast({

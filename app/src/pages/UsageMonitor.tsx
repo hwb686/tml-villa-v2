@@ -125,8 +125,8 @@ export default function UsageMonitor() {
   const fetchUsageStatus = async () => {
     try {
       setError(null);
-      const data = await fetchAdminApi('/api/usage/status');
-      setUsageData(data);
+      const response = await fetchAdminApi('/api/usage/status');
+      setUsageData(response.data);
     } catch (err: any) {
       setError(err.message || '获取使用量状态失败');
     }
@@ -134,8 +134,8 @@ export default function UsageMonitor() {
 
   const fetchAlerts = async () => {
     try {
-      const data = await fetchAdminApi('/api/usage/alerts');
-      setAlerts(data);
+      const response = await fetchAdminApi('/api/usage/alerts');
+      setAlerts(response.data);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
     }

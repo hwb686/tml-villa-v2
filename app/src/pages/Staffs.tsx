@@ -78,8 +78,8 @@ export default function Staffs() {
       if (filterStatus !== 'all') params.status = filterStatus;
       if (searchTerm) params.search = searchTerm;
       
-      const data = await staffApi.getAll(params);
-      setStaffs(data);
+      const response = await staffApi.getAll(params);
+      setStaffs(response.data);
     } catch (error) {
       console.error('Failed to load staffs:', error);
       toast({

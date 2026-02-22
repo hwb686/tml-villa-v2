@@ -47,7 +47,7 @@ if [ -d "app" ]; then
 fi
 
 # 启动后端服务器
-echo "🖥️  启动后端服务器 (端口 3001)..."
+echo "🖥️  启动后端服务器 (端口 3000)..."
 cd backend
 npm run dev &
 BACKEND_PID=$!
@@ -73,7 +73,7 @@ echo -e "${GREEN}  TML Villa 开发环境就绪！${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo ""
 echo "📍 前端地址: http://localhost:5173"
-echo "📍 后端地址: http://localhost:3001"
+echo "📍 后端地址: http://localhost:3000"
 echo ""
 echo "🛑 停止服务器: kill $BACKEND_PID $FRONTEND_PID"
 echo ""
