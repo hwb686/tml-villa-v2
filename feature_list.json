@@ -394,8 +394,9 @@
       "title": "营销工具",
       "description": "优惠券、促销活动",
       "free_limit_impact": "⚠️ 中影响 - 优惠券数据",
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已于 2026-02-22 完成。包含: 1) 优惠券管理页面(Coupons.tsx) - 列表、筛选、创建、编辑、删除; 2) 促销活动页面(Promotions.tsx) - 列表、筛选、创建、编辑、删除; 3) 支持多种优惠券类型(现金券/百分比/折扣); 4) 支持多种适用类型(全部/民宿/租车/餐饮/票务); 5) 完整的后端API和数据库模型; 6) 已集成到管理后台侧边栏菜单"
     },
     {
       "id": "F023",
@@ -422,8 +423,24 @@
       "title": "单元测试",
       "description": "核心功能测试",
       "free_limit_impact": "无影响",
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "steps": [
+        "安装前端测试框架 (Vitest + Testing Library)",
+        "安装后端测试框架 (Jest)",
+        "编写 i18n 国际化测试",
+        "编写 utils 工具函数测试",
+        "编写 imageUtils 图片处理测试",
+        "编写 useApiState Hook 测试",
+        "编写后端认证工具测试",
+        "编写高亮工具测试"
+      ],
+      "acceptance_criteria": [
+        "前端测试通过",
+        "后端测试通过",
+        "测试覆盖核心功能"
+      ],
+      "notes": "已于 2026-02-22 完成。前端使用 Vitest + Testing Library，后端使用 Jest。测试覆盖: 1) i18n 国际化功能（语言检测、翻译获取、嵌套翻译）; 2) cn 工具函数（类名合并、Tailwind 合并）; 3) imageUtils 图片处理（文件大小格式化、文件验证）; 4) useApiState Hook（状态管理、重置）; 5) 后端认证工具（JWT 生成、密码哈希、密码验证）; 6) highlightKeyword 工具（关键词高亮、特殊字符处理）。前端 41 个测试用例全部通过，后端 19 个测试用例全部通过。"
     },
     {
       "id": "F026",

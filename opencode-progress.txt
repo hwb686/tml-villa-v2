@@ -1686,3 +1686,48 @@ const translations = {
 - 建议提交信息: "fix: correct API response handling in Staffs, StaffSchedule, and UsageMonitor pages"
 
 ---
+
+---
+
+## F022 营销工具完成 - 2026-02-22
+**Agent:** 编码Agent
+**功能:** F022 - 营销工具（优惠券、促销活动）
+
+### 问题修复:
+**问题:** api.ts 导入错误 - "does not provide an export named Coupon"
+**原因:** tsconfig.app.json 设置了 "verbatimModuleSyntax": true，要求类型导入使用 import type 语法
+**解决:** 修改 Coupons.tsx 和 Promotions.tsx 的导入语句，将类型和值分开导入
+
+### 完成的工作:
+- [x] 创建 Coupons.tsx 优惠券管理页面（516行）
+- [x] 创建 Promotions.tsx 促销活动页面（499行）
+- [x] 添加 couponApi 和 promotionApi 到 api.ts
+- [x] 添加 Coupon 和 Promotion 类型定义
+- [x] 更新 AdminApp.tsx 添加路由
+- [x] 更新 Sidebar.tsx 添加菜单项
+- [x] 实现后端 API 接口（db.js）
+- [x] 添加数据库模型（schema.prisma）
+- [x] 修复类型导入语法错误
+
+### 端到端测试:
+- [x] 管理后台登录成功
+- [x] 优惠券管理页面加载正常
+- [x] 创建优惠券弹窗正常显示
+- [x] 表单字段完整（类型、金额、时间、适用范围）
+- [x] 促销活动页面加载正常
+- [x] 无控制台错误
+
+### 提交信息:
+- Hash: 91bd4a4
+- Message: feat(F022): 实现营销工具 - 优惠券和促销活动管理
+
+### 功能清单更新:
+- F022 passes: true
+- status: done
+
+### 结束时状态:
+- 已完成功能: 11
+- 下一个功能: 检查 feature_list.json 中下一个 passes: false 的功能
+- 给下一个Agent的备注: 无
+
+---
