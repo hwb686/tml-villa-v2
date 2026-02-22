@@ -57,6 +57,19 @@ export default function SearchModal({ isOpen, onClose, onSearch }: SearchModalPr
     if (onSearch) {
       onSearch({ location, checkIn, checkOut, guests });
     }
+    
+    // F017: 导航到搜索结果页面
+    if (location.trim()) {
+      // 使用 hash router 导航
+      const searchParams = new URLSearchParams();
+      searchParams.set('keyword', location.trim());
+      if (checkIn) searchParams.set('checkIn', format(checkIn, 'yyyy-MM-dd'));
+      if (checkOut) searchParams.set('checkOut', format(checkOut, 'yyyy-MM-dd'));
+      if (totalGuests > 0) searchParams.set('guests', totalGuests.toString());
+      
+      window.location.hash = `/search?${searchParams.toString()}`;
+    }
+    
     onClose();
   };
 

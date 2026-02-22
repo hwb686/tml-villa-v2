@@ -41,8 +41,23 @@ async function fetchAdminApi<T>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 // Homestay API
+export interface HomestaySearchParams {
+  category?: string;
+  location?: string;
+  checkIn?: string;
+  checkOut?: string;
+  guests?: number;
+  // F017 搜索优化参数
+  keyword?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  amenities?: string;
+  sortBy?: string;
+}
+
 export const homestayApi = {
-  getAll: async (params?: { category?: string; location?: string; checkIn?: string; checkOut?: string; guests?: number }) => {
+  getAll: async (params?: HomestaySearchParams) => {
     if (FUNCTIONS_BASE) { return callFunction<Homestay[]>('get-homestays'); }
     const queryParams = new URLSearchParams();
     if (params?.category) queryParams.append('category', params.category);
@@ -50,6 +65,13 @@ export const homestayApi = {
     if (params?.checkIn) queryParams.append('checkIn', params.checkIn);
     if (params?.checkOut) queryParams.append('checkOut', params.checkOut);
     if (params?.guests) queryParams.append('guests', params.guests.toString());
+    // F017 搜索优化参数
+    if (params?.keyword) queryParams.append('keyword', params.keyword);
+    if (params?.minPrice) queryParams.append('minPrice', params.minPrice.toString());
+    if (params?.maxPrice) queryParams.append('maxPrice', params.maxPrice.toString());
+    if (params?.bedrooms) queryParams.append('bedrooms', params.bedrooms.toString());
+    if (params?.amenities) queryParams.append('amenities', params.amenities);
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
     return fetchApi<Homestay[]>(`/homestays?${queryParams.toString()}`);
   },
   getById: async (id: string) => {
@@ -329,7 +351,11 @@ export const driverScheduleApi = {
 // Types
 export interface Category { id: string; label: { zh: string; en: string; th: string }; icon: string; sortOrder: number; isActive: boolean; }
 export interface CreateCategoryData { label: { zh: string; en: string; th: string }; icon: string; sortOrder?: number; }
-export interface Homestay { id: string; title: string; location: string; price: number; rating: number; reviews: number; images: string[]; type: string; guests: number; bedrooms: number; beds: number; bathrooms: number; amenities: string[]; host: { name: string; avatar: string; isSuperhost: boolean }; isFavorite: boolean; description?: string; coordinates?: { lat: number; lng: number }; }
+export interface Homestay { id: string; title: string; location: string; price: number; rating: number; reviews: number; images: string[]; type: string; guests: number; bedrooms: number; beds: number; bathrooms: number; amenities: string[]; host: { name: string; avatar: string; isSuperhost: boolean }; isFavorite: boolean; description?: string; coordinates?: { lat: number; lng: number }; // F017 搜索高亮字段
+  highlightedTitle?: string;
+  highlightedLocation?: string;
+  highlightedDescription?: string;
+}
 export interface CreateHomestayData { title: string; location: string; price: number; images: string[]; type: string; guests: number; bedrooms: number; beds: number; bathrooms: number; amenities: string[]; description: string; }
 export interface Booking { id: string; homestayId: string; homestay: Homestay; checkIn: string; checkOut: string; guests: { adults: number; children: number; infants: number }; totalPrice: number; status: 'pending' | 'confirmed' | 'cancelled' | 'completed'; createdAt: string; }
 export interface BookingData { 

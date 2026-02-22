@@ -120,47 +120,160 @@ if (fs.existsSync(publicPath)) {
   });
 }
 
-// Homestays
+// Helper function to highlight keyword in text
+const highlightKeyword = (text, keyword) => {
+  if (!keyword || !text) return { text, highlighted: text };
+  const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const highlighted = text.replace(regex, '<<HIGHLIGHT>>$1<<END>>');
+  return { text, highlighted };
+};
+
+// Homestays - 支持高级搜索和筛选
 app.get('/api/homestays', async (req, res) => {
   try {
-    const cacheKey = 'homestays:all';
+    const { 
+      category, 
+      keyword, 
+      minPrice, 
+      maxPrice, 
+      bedrooms, 
+      amenities, 
+      sortBy,
+      checkIn,
+      checkOut,
+      guests
+    } = req.query;
+    
+    // 构建缓存键（包含所有搜索参数）
+    const cacheKey = `homestays:${JSON.stringify(req.query)}`;
     const fromCache = cache.get(cacheKey);
     if (fromCache) {
       return res.json(fromCache);
     }
 
+    // 构建 Prisma 查询条件
+    const where = {};
+    
+    // 关键词搜索（标题、位置、描述）
+    if (keyword) {
+      where.OR = [
+        { title: { contains: keyword, mode: 'insensitive' } },
+        { location: { contains: keyword, mode: 'insensitive' } },
+        { description: { contains: keyword, mode: 'insensitive' } },
+      ];
+    }
+    
+    // 分类筛选
+    if (category && category !== 'all') {
+      where.type = category;
+    }
+    
+    // 价格范围筛选
+    if (minPrice || maxPrice) {
+      where.price = {};
+      if (minPrice) where.price.gte = parseInt(minPrice);
+      if (maxPrice) where.price.lte = parseInt(maxPrice);
+    }
+    
+    // 卧室数量筛选（房型）
+    if (bedrooms) {
+      where.bedrooms = { gte: parseInt(bedrooms) };
+    }
+    
+    // 设施筛选（数组包含）
+    if (amenities) {
+      const amenityList = amenities.split(',').map(a => a.trim()).filter(Boolean);
+      if (amenityList.length > 0) {
+        where.amenities = { hasEvery: amenityList };
+      }
+    }
+    
+    // 客人数量筛选
+    if (guests) {
+      where.guests = { gte: parseInt(guests) };
+    }
+
+    // 构建排序
+    let orderBy = {};
+    switch (sortBy) {
+      case 'price_asc':
+        orderBy = { price: 'asc' };
+        break;
+      case 'price_desc':
+        orderBy = { price: 'desc' };
+        break;
+      case 'rating':
+        orderBy = { rating: 'desc' };
+        break;
+      default:
+        orderBy = { createdAt: 'desc' };
+    }
+
     const homestays = await prisma.homestay.findMany({
+      where,
+      orderBy,
       include: {
         stocks: true,
       },
     });
     
     // Transform to match frontend format
-    const formatted = homestays.map(h => ({
-      id: h.id,
-      title: h.title,
-      location: h.location,
-      price: h.price,
-      rating: h.rating,
-      reviews: h.reviews,
-      images: h.images,
-      type: h.type,
-      guests: h.guests,
-      bedrooms: h.bedrooms,
-      beds: h.beds,
-      bathrooms: h.bathrooms,
-      amenities: h.amenities,
-      description: h.description,
-      isFavorite: h.isFavorite,
-      host: {
-        name: h.hostName,
-        avatar: h.hostAvatar,
-        isSuperhost: h.isSuperhost,
-      },
-    }));
+    const formatted = homestays.map(h => {
+      // 生成高亮文本
+      const titleHighlight = highlightKeyword(h.title, keyword);
+      const locationHighlight = highlightKeyword(h.location, keyword);
+      const descriptionHighlight = highlightKeyword(h.description, keyword);
+      
+      return {
+        id: h.id,
+        title: h.title,
+        location: h.location,
+        price: h.price,
+        rating: h.rating,
+        reviews: h.reviews,
+        images: h.images,
+        type: h.type,
+        guests: h.guests,
+        bedrooms: h.bedrooms,
+        beds: h.beds,
+        bathrooms: h.bathrooms,
+        amenities: h.amenities,
+        description: h.description,
+        isFavorite: h.isFavorite,
+        // 高亮字段
+        highlightedTitle: titleHighlight.highlighted,
+        highlightedLocation: locationHighlight.highlighted,
+        highlightedDescription: descriptionHighlight.highlighted,
+        host: {
+          name: h.hostName,
+          avatar: h.hostAvatar,
+          isSuperhost: h.isSuperhost,
+        },
+      };
+    });
 
-    const payload = { code: 200, data: formatted };
-    cache.set(cacheKey, payload);
+    const payload = { 
+      code: 200, 
+      data: formatted,
+      meta: {
+        total: formatted.length,
+        keyword: keyword || null,
+        filters: {
+          category: category || null,
+          minPrice: minPrice ? parseInt(minPrice) : null,
+          maxPrice: maxPrice ? parseInt(maxPrice) : null,
+          bedrooms: bedrooms ? parseInt(bedrooms) : null,
+          amenities: amenities || null,
+          sortBy: sortBy || null,
+        }
+      }
+    };
+    
+    // 只对无搜索参数的请求缓存
+    if (!keyword && !minPrice && !maxPrice && !bedrooms && !amenities && !sortBy) {
+      cache.set('homestays:all', payload);
+    }
+    
     res.json(payload);
   } catch (err) {
     console.error('Error fetching homestays:', err);

@@ -3,16 +3,39 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// 解析 URL 查询参数
+function parseQuery(search: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (!search) return params;
+  
+  const searchParams = new URLSearchParams(search);
+  searchParams.forEach((value, key) => {
+    params[key] = value;
+  });
+  
+  return params;
+}
+
 export function useHashRouter() {
   const [path, setPath] = useState(() => {
     const hash = window.location.hash;
     return hash ? hash.replace('#', '') : '/';
   });
+  
+  const [query, setQuery] = useState<Record<string, string>>(() => {
+    const hash = window.location.hash;
+    const queryIndex = hash.indexOf('?');
+    return queryIndex > -1 ? parseQuery(hash.substring(queryIndex)) : {};
+  });
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      setPath(hash ? hash.replace('#', '') : '/');
+      const fullPath = hash ? hash.replace('#', '') : '/';
+      setPath(fullPath);
+      
+      const queryIndex = fullPath.indexOf('?');
+      setQuery(queryIndex > -1 ? parseQuery(fullPath.substring(queryIndex)) : {});
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -22,9 +45,12 @@ export function useHashRouter() {
   const navigate = useCallback((newPath: string) => {
     window.location.hash = newPath;
     setPath(newPath);
+    
+    const queryIndex = newPath.indexOf('?');
+    setQuery(queryIndex > -1 ? parseQuery(newPath.substring(queryIndex)) : {});
   }, []);
 
-  return { path, navigate };
+  return { path, query, navigate };
 }
 
 // Admin router with hash support

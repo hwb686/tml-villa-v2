@@ -12,6 +12,7 @@ import CarRentalPage from '@/pages/CarRental';
 import TicketBookingPage from '@/pages/TicketBooking';
 import UserCenter from '@/pages/UserCenter';
 import LoginPage from '@/pages/LoginPage';
+import SearchResults from '@/pages/SearchResults';
 import AdminApp from '@/AdminApp';
 import { homestayApi, type Homestay } from '@/services/api';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -98,11 +99,14 @@ export default function App() {
 
   // Route mapping
   const renderRoute = () => {
-    if (path.startsWith('/admin')) {
+    // 移除查询参数进行路由匹配
+    const pathWithoutQuery = path.split('?')[0];
+    
+    if (pathWithoutQuery.startsWith('/admin')) {
       return <AdminApp />;
     }
     
-    switch (path) {
+    switch (pathWithoutQuery) {
       case '/':
         return <HomePage />;
       case '/test':
@@ -117,8 +121,10 @@ export default function App() {
         return <LoginPage />;
       case '/user':
         return <UserCenter />;
+      case '/search':
+        return <SearchResults />;
       default:
-        if (path.startsWith('/homestay/')) {
+        if (pathWithoutQuery.startsWith('/homestay/')) {
           return <HomestayDetail />;
         }
         return <HomePage />;
