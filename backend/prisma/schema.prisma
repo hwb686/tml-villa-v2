@@ -18,14 +18,62 @@ model User {
   status       String     @default("active")
   avatar       String?
   isHost       Boolean    @default(false)
+  // 会员系统字段
+  points       Int        @default(0) @map("points") // 当前积分
+  totalPoints  Int        @default(0) @map("total_points") // 累计积分
+  levelId      String?    @map("level_id") // 会员等级ID
   createdAt    DateTime   @default(now()) @map("create_time")
   updatedAt    DateTime   @updatedAt
   orders       Order[]
   favorites    Favorite[]
   reviews      Review[]
   notifications Notification[]
+  pointLogs    PointLog[]
+  level        MemberLevel? @relation(fields: [levelId], references: [id])
   
   @@map("users")
+}
+
+// 会员等级配置
+model MemberLevel {
+  id            String   @id @default(cuid())
+  name          String   // 等级名称，如"普通会员"、"银卡会员"、"金卡会员"
+  nameEn        String   @map("name_en") // 英文名称
+  minPoints     Int      @map("min_points") // 升级所需最低累计积分
+  maxPoints     Int      @map("max_points") // 该等级最高积分（下一等级的minPoints-1）
+  discount      Int      @default(0) // 折扣百分比（0表示无折扣，5表示95折）
+  pointsRate    Int      @default(1) @map("points_rate") // 积分倍率（1表示消费1元得1积分）
+  icon          String?  // 等级图标
+  color         String?  // 等级颜色
+  benefits      String?  @db.Text // 等级权益描述（JSON格式）
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  users         User[]
+  
+  @@unique([minPoints])
+  @@index([sortOrder])
+  @@map("member_levels")
+}
+
+// 积分变动记录
+model PointLog {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  points        Int      // 积分变动（正数为获得，负数为消耗）
+  balance       Int      // 变动后余额
+  type          String   // 变动类型：earn_order(订单获得), earn_review(评价获得), consume(消费), admin(管理员调整), expire(过期)
+  relatedId     String?  @map("related_id") // 关联ID（订单ID等）
+  relatedType   String?  @map("related_type") // 关联类型（order, review等）
+  remark        String?  // 备注
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("point_logs")
 }
 
 // 用户收藏
