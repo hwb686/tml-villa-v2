@@ -14,6 +14,7 @@ import UserCenter from '@/pages/UserCenter';
 import LoginPage from '@/pages/LoginPage';
 import SearchResults from '@/pages/SearchResults';
 import AdminApp from '@/AdminApp';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { homestayApi, type Homestay } from '@/services/api';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useHashRouter } from '@/lib/router';
@@ -132,10 +133,12 @@ export default function App() {
   };
 
   return (
-    <LanguageProvider>
-      <div className="min-h-screen bg-white">
-        {renderRoute()}
-      </div>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <div className="min-h-screen bg-white">
+          {renderRoute()}
+        </div>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }

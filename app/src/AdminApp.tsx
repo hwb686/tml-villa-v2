@@ -27,6 +27,7 @@ import Categories from '@/pages/Categories';
 import HomestayManage from '@/pages/HomestayManage';
 import Reviews from '@/pages/Reviews';
 import { useAdminHashRouter } from '@/lib/router';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function AdminApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -123,12 +124,14 @@ case 'car-rentals':
   }
 
   return (
-    <MainLayout 
-      currentPath={path} 
-      onNavigate={navigate} 
-      onLogout={handleLogout}
-    >
-      {renderContent()}
-    </MainLayout>
+    <ErrorBoundary>
+      <MainLayout 
+        currentPath={path} 
+        onNavigate={navigate} 
+        onLogout={handleLogout}
+      >
+        {renderContent()}
+      </MainLayout>
+    </ErrorBoundary>
   );
 }

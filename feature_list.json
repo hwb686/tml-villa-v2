@@ -366,10 +366,11 @@
       "category": "tech",
       "priority": "P2",
       "title": "错误边界组件",
-      "description": "防止白屏",
+      "description": "防止白屏，捕获渲染错误并显示友好错误界面",
       "free_limit_impact": "无影响",
-      "status": "missing",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已于 2026-02-22 完成。创建了 ErrorBoundary 组件，支持: 1) 捕获子组件渲染错误; 2) 显示友好的错误界面; 3) 提供重试和返回首页功能; 4) 开发环境显示详细错误信息; 5) 集成到 App.tsx 和 AdminApp.tsx 包裹整个应用; 6) 支持自定义 fallback UI; 7) 支持通过 resetKeys 重置错误状态"
     },
     {
       "id": "F022",

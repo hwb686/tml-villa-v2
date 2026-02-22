@@ -143,7 +143,7 @@ export default function SearchResults() {
             {keyword ? (
               <div>
                 <h1 className="text-2xl font-semibold text-ink">
-                  {lang === 'zh' ? `"${keyword}" 的搜索结果' : lang === 'th' ? `ผลการค้นหา "${keyword}"` : `Search results for "${keyword}"`}
+                  {lang === 'zh' ? `"${keyword}" 的搜索结果` : lang === 'th' ? `ผลการค้นหา "${keyword}"` : `Search results for "${keyword}"`}
                 </h1>
                 <p className="text-gray-500 mt-1">
                   {isLoading 
