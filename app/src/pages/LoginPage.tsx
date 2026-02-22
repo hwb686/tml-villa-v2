@@ -32,12 +32,42 @@ export default function LoginPage() {
     phone: '',
   });
 
+  const getErrorMessage = (key: string): string => {
+    const messages: Record<string, Record<string, string>> = {
+      zh: {
+        fillEmailPassword: '请填写邮箱和密码',
+        loginFailed: '登录失败，请检查邮箱和密码',
+        passwordTooShort: '密码长度不能少于6位',
+        passwordMismatch: '两次输入的密码不一致',
+        registerFailed: '注册失败，请稍后重试',
+        fillRequired: '请填写邮箱和密码',
+      },
+      en: {
+        fillEmailPassword: 'Please fill in email and password',
+        loginFailed: 'Login failed, please check your email and password',
+        passwordTooShort: 'Password must be at least 6 characters',
+        passwordMismatch: 'Passwords do not match',
+        registerFailed: 'Registration failed, please try again later',
+        fillRequired: 'Please fill in email and password',
+      },
+      th: {
+        fillEmailPassword: 'กรุณากรอกอีเมลและรหัสผ่าน',
+        loginFailed: 'เข้าสู่ระบบล้มเหลว กรุณาตรวจสอบอีเมลและรหัสผ่าน',
+        passwordTooShort: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+        passwordMismatch: 'รหัสผ่านไม่ตรงกัน',
+        registerFailed: 'สมัครสมาชิกล้มเหลว กรุณาลองอีกครั้ง',
+        fillRequired: 'กรุณากรอกอีเมลและรหัสผ่าน',
+      },
+    };
+    return messages[t?.lang || 'zh']?.[key] || messages.zh[key];
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (!loginForm.email || !loginForm.password) {
-      setError('请填写邮箱和密码');
+      setError(getErrorMessage('fillEmailPassword'));
       return;
     }
 
@@ -47,7 +77,7 @@ export default function LoginPage() {
       localStorage.setItem('userToken', res.data.token);
       window.location.hash = '/user';
     } catch (err: any) {
-      setError(err.message || '登录失败，请检查邮箱和密码');
+      setError(err.message || getErrorMessage('loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -58,17 +88,17 @@ export default function LoginPage() {
     setError(null);
 
     if (!registerForm.email || !registerForm.password) {
-      setError('请填写邮箱和密码');
+      setError(getErrorMessage('fillRequired'));
       return;
     }
 
     if (registerForm.password.length < 6) {
-      setError('密码长度不能少于6位');
+      setError(getErrorMessage('passwordTooShort'));
       return;
     }
 
     if (registerForm.password !== registerForm.confirmPassword) {
-      setError('两次输入的密码不一致');
+      setError(getErrorMessage('passwordMismatch'));
       return;
     }
 
@@ -83,7 +113,7 @@ export default function LoginPage() {
       localStorage.setItem('userToken', res.data.token);
       window.location.hash = '/user';
     } catch (err: any) {
-      setError(err.message || '注册失败，请稍后重试');
+      setError(err.message || getErrorMessage('registerFailed'));
     } finally {
       setLoading(false);
     }
@@ -97,13 +127,13 @@ export default function LoginPage() {
         <div className="container-luxury max-w-md">
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-serif">欢迎来到 TML Villa</CardTitle>
+              <CardTitle className="text-2xl font-serif">TML Villa</CardTitle>
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="w-full mb-6">
-                  <TabsTrigger value="login" className="flex-1">登录</TabsTrigger>
-                  <TabsTrigger value="register" className="flex-1">注册</TabsTrigger>
+                  <TabsTrigger value="login" className="flex-1">{t.auth.login}</TabsTrigger>
+                  <TabsTrigger value="register" className="flex-1">{t.auth.register}</TabsTrigger>
                 </TabsList>
 
                 {error && (
@@ -116,13 +146,13 @@ export default function LoginPage() {
                 <TabsContent value="login">
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                      <Label htmlFor="login-email">邮箱</Label>
+                      <Label htmlFor="login-email">{t.auth.email}</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="login-email"
                           type="email"
-                          placeholder="请输入邮箱"
+                          placeholder={t.auth.email}
                           value={loginForm.email}
                           onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                           className="pl-10"
@@ -130,13 +160,13 @@ export default function LoginPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="login-password">密码</Label>
+                      <Label htmlFor="login-password">{t.auth.password}</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="login-password"
                           type="password"
-                          placeholder="请输入密码"
+                          placeholder={t.auth.password}
                           value={loginForm.password}
                           onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                           className="pl-10"
@@ -145,7 +175,7 @@ export default function LoginPage() {
                     </div>
                     <Button type="submit" className="w-full" disabled={loading}>
                       {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      登录
+                      {t.auth.login}
                     </Button>
                   </form>
                 </TabsContent>
@@ -153,13 +183,13 @@ export default function LoginPage() {
                 <TabsContent value="register">
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div>
-                      <Label htmlFor="register-username">用户名</Label>
+                      <Label htmlFor="register-username">{t.auth.username}</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="register-username"
                           type="text"
-                          placeholder="请输入用户名（可选）"
+                          placeholder={t.auth.username}
                           value={registerForm.username}
                           onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
                           className="pl-10"
@@ -167,13 +197,13 @@ export default function LoginPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="register-email">邮箱 *</Label>
+                      <Label htmlFor="register-email">{t.auth.email} *</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="register-email"
                           type="email"
-                          placeholder="请输入邮箱"
+                          placeholder={t.auth.email}
                           value={registerForm.email}
                           onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                           className="pl-10"
@@ -182,13 +212,13 @@ export default function LoginPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="register-phone">手机号</Label>
+                      <Label htmlFor="register-phone">{t.auth.phone}</Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="register-phone"
                           type="tel"
-                          placeholder="请输入手机号（可选）"
+                          placeholder={t.auth.phone}
                           value={registerForm.phone}
                           onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
                           className="pl-10"
@@ -196,13 +226,13 @@ export default function LoginPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="register-password">密码 *</Label>
+                      <Label htmlFor="register-password">{t.auth.password} *</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="register-password"
                           type="password"
-                          placeholder="请输入密码（至少6位）"
+                          placeholder={t.auth.password}
                           value={registerForm.password}
                           onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                           className="pl-10"
@@ -211,13 +241,13 @@ export default function LoginPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="register-confirm-password">确认密码 *</Label>
+                      <Label htmlFor="register-confirm-password">{t.auth.confirmPassword} *</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           id="register-confirm-password"
                           type="password"
-                          placeholder="请再次输入密码"
+                          placeholder={t.auth.confirmPassword}
                           value={registerForm.confirmPassword}
                           onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
                           className="pl-10"
@@ -227,7 +257,7 @@ export default function LoginPage() {
                     </div>
                     <Button type="submit" className="w-full" disabled={loading}>
                       {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      注册
+                      {t.auth.register}
                     </Button>
                   </form>
                 </TabsContent>

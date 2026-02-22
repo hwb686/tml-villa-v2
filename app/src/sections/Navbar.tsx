@@ -72,7 +72,7 @@ export default function Navbar({ onSearchClick }: NavbarProps) {
             <a href={getHashLink('/')} className="text-sm font-medium text-ink hover:text-champagne transition-colors">{t.nav.homestay}</a>
             <a href={getHashLink('/car-rental')} className="text-sm font-medium text-gray-500 hover:text-champagne transition-colors">{t.nav.carRental}</a>
             <a href={getHashLink('/meal-order')} className="text-sm font-medium text-gray-500 hover:text-champagne transition-colors">{t.nav.dining}</a>
-            <a href={getHashLink('/ticket-booking')} className="text-sm font-medium text-gray-500 hover:text-champagne transition-colors">票务预订</a>
+            <a href={getHashLink('/ticket-booking')} className="text-sm font-medium text-gray-500 hover:text-champagne transition-colors">{t.nav.ticketBooking}</a>
           </div>
 
           {/* Right Section */}
@@ -133,25 +133,25 @@ export default function Navbar({ onSearchClick }: NavbarProps) {
                     <DropdownMenuItem>
                       <a href={getHashLink('/user')} className="w-full flex items-center gap-2">
                         <User className="h-4 w-4" />
-                        个人中心
+                        {t.userMenu.personalCenter}
                       </a>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <a href={getHashLink('/user')} className="w-full flex items-center gap-2">
                         <Package className="h-4 w-4" />
-                        我的订单
+                        {t.userMenu.myOrders}
                       </a>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <a href={getHashLink('/user')} className="w-full flex items-center gap-2">
                         <Heart className="h-4 w-4" />
-                        我的收藏
+                        {t.userMenu.myFavorites}
                       </a>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                       <LogOut className="h-4 w-4 mr-2" />
-                      退出登录
+                      {t.userMenu.logout}
                     </DropdownMenuItem>
                   </>
                 ) : (
@@ -159,20 +159,20 @@ export default function Navbar({ onSearchClick }: NavbarProps) {
                     <DropdownMenuItem>
                       <a href={getHashLink('/login')} className="w-full flex items-center gap-2">
                         <LogIn className="h-4 w-4" />
-                        登录 / 注册
+                        {t.userMenu.loginRegister}
                       </a>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
-                      <a href={getHashLink('/meal-order')} className="w-full">订餐登记</a>
+                      <a href={getHashLink('/meal-order')} className="w-full">{t.userMenu.mealRegistration}</a>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <a href={getHashLink('/car-rental')} className="w-full">租车登记</a>
+                      <a href={getHashLink('/car-rental')} className="w-full">{t.userMenu.carRegistration}</a>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <a href={getHashLink('/ticket-booking')} className="w-full">票务预订</a>
+                      <a href={getHashLink('/ticket-booking')} className="w-full">{t.userMenu.ticketBooking}</a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>帮助中心</DropdownMenuItem>
+                    <DropdownMenuItem>{t.userMenu.helpCenter}</DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
@@ -185,15 +185,15 @@ export default function Navbar({ onSearchClick }: NavbarProps) {
           <div onClick={onSearchClick} className="search-bar max-w-4xl mx-auto cursor-pointer">
             <div className="flex-1 px-6 py-3 border-r border-gray-200">
               <p className="text-xs font-medium text-ink">{t.search.where}</p>
-              <p className="text-sm text-gray-500">搜索目的地</p>
+              <p className="text-sm text-gray-500">{t.search.searchDestination}</p>
             </div>
             <div className="hidden sm:block px-6 py-3 border-r border-gray-200">
               <p className="text-xs font-medium text-ink">{t.search.checkin}</p>
-              <p className="text-sm text-gray-500">添加日期</p>
+              <p className="text-sm text-gray-500">{t.search.addDates}</p>
             </div>
             <div className="hidden sm:block px-6 py-3 border-r border-gray-200">
               <p className="text-xs font-medium text-ink">{t.search.checkout}</p>
-              <p className="text-sm text-gray-500">添加日期</p>
+              <p className="text-sm text-gray-500">{t.search.addDates}</p>
             </div>
             <div className="flex-1 px-6 py-3 flex items-center justify-between">
               <div>
