@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ClipboardList, CreditCard, Settings, ChevronDown, ChevronRight, Home, Car, Ticket, UtensilsCrossed, LogOut, Menu, X, Tags, Calendar, User, MessageSquare, Users2, Calculator, PieChart, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, CreditCard, Settings, ChevronDown, ChevronRight, Home, Car, Ticket, UtensilsCrossed, LogOut, Menu, X, Tags, Calendar, User, MessageSquare, Users2, Calculator, PieChart, Activity, Gift, Megaphone } from 'lucide-react';
 
 interface MenuItem {
   key: string;
@@ -78,12 +78,21 @@ const menuItems: MenuItem[] = [
     ]
   },
   { key: 'reviews', label: '评价管理', icon: MessageSquare, path: 'reviews' },
+  { 
+    key: 'marketing', 
+    label: '营销工具', 
+    icon: Gift, 
+    children: [
+      { key: 'coupons', label: '优惠券管理', icon: Gift, path: 'coupons' },
+      { key: 'promotions', label: '促销活动', icon: Megaphone, path: 'promotions' },
+    ]
+  },
   { key: 'usage-monitor', label: '额度监控', icon: Activity, path: 'usage-monitor' },
   { key: 'settings', label: '系统设置', icon: Settings, path: 'settings' },
 ];
 
 export default function Sidebar({ collapsed, onToggle, currentPath, onNavigate, onLogout }: SidebarProps) {
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['orders', 'configs', 'car-management', 'staff-management']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['orders', 'configs', 'car-management', 'staff-management', 'marketing']);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleExpanded = (key: string) => {

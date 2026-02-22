@@ -6081,6 +6081,537 @@ app.post('/api/usage/simulate', verifyAdmin, async (req, res) => {
   }
 });
 
+// ============================================================
+// 营销工具 API - 优惠券和促销活动
+// ============================================================
+
+// ========== 优惠券 API ==========
+
+// GET /api/coupons - 获取优惠券列表
+app.get('/api/coupons', async (req, res) => {
+  try {
+    const { status, applicableType, page = 1, pageSize = 20 } = req.query;
+    const where = {};
+    
+    if (status) where.status = status;
+    if (applicableType) where.applicableType = applicableType;
+    
+    const total = await prisma.coupon.count({ where });
+    const list = await prisma.coupon.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (parseInt(page) - 1) * parseInt(pageSize),
+      take: parseInt(pageSize),
+    });
+    
+    res.json({ code: 200, data: { list, total, page: parseInt(page), pageSize: parseInt(pageSize) } });
+  } catch (err) {
+    console.error('Error fetching coupons:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/coupons/:id - 获取优惠券详情
+app.get('/api/coupons/:id', async (req, res) => {
+  try {
+    const coupon = await prisma.coupon.findUnique({
+      where: { id: req.params.id },
+      include: { userCoupons: { take: 10, orderBy: { createdAt: 'desc' } } },
+    });
+    
+    if (!coupon) {
+      return res.status(404).json({ code: 404, msg: '优惠券不存在' });
+    }
+    
+    res.json({ code: 200, data: coupon });
+  } catch (err) {
+    console.error('Error fetching coupon:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/coupons - 创建优惠券
+app.post('/api/coupons', verifyAdmin, async (req, res) => {
+  try {
+    const {
+      code,
+      name,
+      description,
+      type,
+      value,
+      minAmount = 0,
+      maxDiscount,
+      totalCount = 0,
+      perUserLimit = 1,
+      startTime,
+      endTime,
+      applicableType = 'all',
+      applicableIds,
+    } = req.body;
+    
+    // 检查优惠券代码是否已存在
+    const existing = await prisma.coupon.findUnique({ where: { code } });
+    if (existing) {
+      return res.status(400).json({ code: 400, msg: '优惠券代码已存在' });
+    }
+    
+    const coupon = await prisma.coupon.create({
+      data: {
+        code,
+        name,
+        description,
+        type,
+        value,
+        minAmount,
+        maxDiscount,
+        totalCount,
+        perUserLimit,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        applicableType,
+        applicableIds,
+      },
+    });
+    
+    res.json({ code: 200, data: coupon, msg: '优惠券创建成功' });
+  } catch (err) {
+    console.error('Error creating coupon:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/coupons/:id - 更新优惠券
+app.put('/api/coupons/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
+    if (updateData.endTime) updateData.endTime = new Date(updateData.endTime);
+    
+    const coupon = await prisma.coupon.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    res.json({ code: 200, data: coupon, msg: '优惠券更新成功' });
+  } catch (err) {
+    console.error('Error updating coupon:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/coupons/:id - 删除优惠券
+app.delete('/api/coupons/:id', verifyAdmin, async (req, res) => {
+  try {
+    await prisma.coupon.delete({ where: { id: req.params.id } });
+    res.json({ code: 200, msg: '优惠券删除成功' });
+  } catch (err) {
+    console.error('Error deleting coupon:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/coupons/validate - 验证优惠券
+app.post('/api/coupons/validate', async (req, res) => {
+  try {
+    const { code, amount, applicableType, applicableId } = req.body;
+    
+    const coupon = await prisma.coupon.findUnique({ where: { code } });
+    
+    if (!coupon) {
+      return res.status(400).json({ code: 400, msg: '优惠券不存在' });
+    }
+    
+    // 检查状态
+    if (coupon.status !== 'active') {
+      return res.status(400).json({ code: 400, msg: '优惠券已失效' });
+    }
+    
+    // 检查有效期
+    const now = new Date();
+    if (now < coupon.startTime) {
+      return res.status(400).json({ code: 400, msg: '优惠券尚未生效' });
+    }
+    if (now > coupon.endTime) {
+      return res.status(400).json({ code: 400, msg: '优惠券已过期' });
+    }
+    
+    // 检查最低消费
+    if (amount < coupon.minAmount) {
+      return res.status(400).json({ code: 400, msg: `最低消费金额为 ${coupon.minAmount} 泰铢` });
+    }
+    
+    // 检查适用类型
+    if (coupon.applicableType !== 'all' && coupon.applicableType !== applicableType) {
+      return res.status(400).json({ code: 400, msg: '该优惠券不适用于当前订单类型' });
+    }
+    
+    // 检查适用项目
+    if (coupon.applicableIds && applicableId) {
+      const ids = coupon.applicableIds.split(',').map(id => id.trim());
+      if (!ids.includes(applicableId)) {
+        return res.status(400).json({ code: 400, msg: '该优惠券不适用于当前项目' });
+      }
+    }
+    
+    // 检查库存
+    if (coupon.totalCount > 0 && coupon.usedCount >= coupon.totalCount) {
+      return res.status(400).json({ code: 400, msg: '优惠券已被领完' });
+    }
+    
+    // 计算折扣金额
+    let discountAmount = 0;
+    if (coupon.type === 'cash') {
+      discountAmount = coupon.value;
+    } else if (coupon.type === 'percent') {
+      discountAmount = Math.floor(amount * coupon.value / 100);
+      if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+        discountAmount = coupon.maxDiscount;
+      }
+    } else if (coupon.type === 'discount') {
+      discountAmount = coupon.value;
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        coupon,
+        discountAmount,
+        finalAmount: amount - discountAmount,
+      },
+    });
+  } catch (err) {
+    console.error('Error validating coupon:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/coupons/use - 使用优惠券
+app.post('/api/coupons/use', authMiddleware, async (req, res) => {
+  try {
+    const { code, orderId, amount } = req.body;
+    const userId = req.user.id;
+    
+    const coupon = await prisma.coupon.findUnique({ where: { code } });
+    
+    if (!coupon) {
+      return res.status(400).json({ code: 400, msg: '优惠券不存在' });
+    }
+    
+    // 检查用户使用次数
+    const userUsage = await prisma.userCoupon.count({
+      where: { userId, couponId: coupon.id, status: 'used' },
+    });
+    
+    if (userUsage >= coupon.perUserLimit) {
+      return res.status(400).json({ code: 400, msg: '您已达到该优惠券的使用上限' });
+    }
+    
+    // 计算折扣金额
+    let discountAmount = 0;
+    if (coupon.type === 'cash') {
+      discountAmount = coupon.value;
+    } else if (coupon.type === 'percent') {
+      discountAmount = Math.floor(amount * coupon.value / 100);
+      if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+        discountAmount = coupon.maxDiscount;
+      }
+    } else if (coupon.type === 'discount') {
+      discountAmount = coupon.value;
+    }
+    
+    // 创建用户优惠券记录
+    await prisma.userCoupon.create({
+      data: {
+        userId,
+        couponId: coupon.id,
+        orderId,
+        status: 'used',
+        usedAt: new Date(),
+      },
+    });
+    
+    // 更新优惠券使用次数
+    await prisma.coupon.update({
+      where: { id: coupon.id },
+      data: { usedCount: { increment: 1 } },
+    });
+    
+    res.json({
+      code: 200,
+      data: {
+        discountAmount,
+        finalAmount: amount - discountAmount,
+      },
+      msg: '优惠券使用成功',
+    });
+  } catch (err) {
+    console.error('Error using coupon:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/coupons/user/available - 获取用户可用优惠券
+app.get('/api/coupons/user/available', authMiddleware, async (req, res) => {
+  try {
+    const { amount, applicableType } = req.query;
+    const userId = req.user.id;
+    
+    const now = new Date();
+    
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        status: 'active',
+        startTime: { lte: now },
+        endTime: { gte: now },
+        OR: [
+          { totalCount: 0 },
+          { usedCount: { lt: prisma.coupon.fields.totalCount } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    // 筛选符合条件的优惠券
+    const availableCoupons = [];
+    for (const coupon of coupons) {
+      // 检查用户使用次数
+      const userUsage = await prisma.userCoupon.count({
+        where: { userId, couponId: coupon.id, status: 'used' },
+      });
+      
+      if (userUsage >= coupon.perUserLimit) continue;
+      
+      // 检查最低消费
+      if (amount && parseInt(amount) < coupon.minAmount) continue;
+      
+      // 检查适用类型
+      if (applicableType && coupon.applicableType !== 'all' && coupon.applicableType !== applicableType) continue;
+      
+      // 计算折扣金额
+      let discountAmount = 0;
+      if (amount) {
+        if (coupon.type === 'cash') {
+          discountAmount = coupon.value;
+        } else if (coupon.type === 'percent') {
+          discountAmount = Math.floor(parseInt(amount) * coupon.value / 100);
+          if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+            discountAmount = coupon.maxDiscount;
+          }
+        }
+      }
+      
+      availableCoupons.push({
+        ...coupon,
+        discountAmount,
+        userUsedCount: userUsage,
+      });
+    }
+    
+    res.json({ code: 200, data: availableCoupons });
+  } catch (err) {
+    console.error('Error fetching user available coupons:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// ========== 促销活动 API ==========
+
+// GET /api/promotions - 获取促销活动列表
+app.get('/api/promotions', async (req, res) => {
+  try {
+    const { status, applicableType, page = 1, pageSize = 20 } = req.query;
+    const where = {};
+    
+    if (status) where.status = status;
+    if (applicableType) where.applicableType = applicableType;
+    
+    const total = await prisma.promotion.count({ where });
+    const list = await prisma.promotion.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (parseInt(page) - 1) * parseInt(pageSize),
+      take: parseInt(pageSize),
+    });
+    
+    res.json({ code: 200, data: { list, total, page: parseInt(page), pageSize: parseInt(pageSize) } });
+  } catch (err) {
+    console.error('Error fetching promotions:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/promotions/active - 获取当前有效的促销活动
+app.get('/api/promotions/active', async (req, res) => {
+  try {
+    const { applicableType } = req.query;
+    const now = new Date();
+    
+    const where = {
+      status: 'active',
+      startTime: { lte: now },
+      endTime: { gte: now },
+    };
+    
+    if (applicableType) {
+      where.OR = [
+        { applicableType: 'all' },
+        { applicableType },
+      ];
+    }
+    
+    const list = await prisma.promotion.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    res.json({ code: 200, data: list });
+  } catch (err) {
+    console.error('Error fetching active promotions:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/promotions/:id - 获取促销活动详情
+app.get('/api/promotions/:id', async (req, res) => {
+  try {
+    const promotion = await prisma.promotion.findUnique({
+      where: { id: req.params.id },
+    });
+    
+    if (!promotion) {
+      return res.status(404).json({ code: 404, msg: '促销活动不存在' });
+    }
+    
+    res.json({ code: 200, data: promotion });
+  } catch (err) {
+    console.error('Error fetching promotion:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/promotions - 创建促销活动
+app.post('/api/promotions', verifyAdmin, async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      type,
+      discountValue,
+      discountType = 'percent',
+      applicableType = 'all',
+      applicableIds,
+      startTime,
+      endTime,
+      image,
+      bannerText,
+    } = req.body;
+    
+    const promotion = await prisma.promotion.create({
+      data: {
+        name,
+        description,
+        type,
+        discountValue,
+        discountType,
+        applicableType,
+        applicableIds,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        image,
+        bannerText,
+      },
+    });
+    
+    res.json({ code: 200, data: promotion, msg: '促销活动创建成功' });
+  } catch (err) {
+    console.error('Error creating promotion:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/promotions/:id - 更新促销活动
+app.put('/api/promotions/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
+    if (updateData.endTime) updateData.endTime = new Date(updateData.endTime);
+    
+    const promotion = await prisma.promotion.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    res.json({ code: 200, data: promotion, msg: '促销活动更新成功' });
+  } catch (err) {
+    console.error('Error updating promotion:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/promotions/:id - 删除促销活动
+app.delete('/api/promotions/:id', verifyAdmin, async (req, res) => {
+  try {
+    await prisma.promotion.delete({ where: { id: req.params.id } });
+    res.json({ code: 200, msg: '促销活动删除成功' });
+  } catch (err) {
+    console.error('Error deleting promotion:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/promotions/check/:itemId - 检查项目是否有促销活动
+app.get('/api/promotions/check/:itemId', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { applicableType, amount } = req.query;
+    const now = new Date();
+    
+    const promotions = await prisma.promotion.findMany({
+      where: {
+        status: 'active',
+        startTime: { lte: now },
+        endTime: { gte: now },
+        OR: [
+          { applicableType: 'all' },
+          { applicableType },
+        ],
+      },
+    });
+    
+    // 筛选适用该项目的促销活动
+    const applicablePromotions = promotions.filter(p => {
+      if (!p.applicableIds) return true;
+      const ids = p.applicableIds.split(',').map(id => id.trim());
+      return ids.includes(itemId);
+    });
+    
+    // 计算折扣
+    const result = applicablePromotions.map(p => {
+      let discountAmount = 0;
+      if (amount) {
+        if (p.discountType === 'percent') {
+          discountAmount = Math.floor(parseInt(amount) * p.discountValue / 100);
+        } else {
+          discountAmount = p.discountValue;
+        }
+      }
+      return {
+        ...p,
+        discountAmount,
+      };
+    });
+    
+    res.json({ code: 200, data: result });
+  } catch (err) {
+    console.error('Error checking promotions:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

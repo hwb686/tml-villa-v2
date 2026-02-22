@@ -18,6 +18,8 @@ import TicketConfigs from '@/pages/TicketConfigs';
 import StockManagement from '@/pages/StockManagement';
 import CalendarView from '@/pages/CalendarView';
 import UsageMonitor from '@/pages/UsageMonitor';
+import Coupons from '@/pages/Coupons';
+import Promotions from '@/pages/Promotions';
 
 import Finance from '@/pages/Finance';
 import Costs from '@/pages/Costs';
@@ -112,6 +114,10 @@ case 'car-rentals':
         return <UsageMonitor />;
       case 'reviews':
         return <Reviews />;
+      case 'coupons':
+        return <Coupons />;
+      case 'promotions':
+        return <Promotions />;
       case 'settings':
         return <Settings />;
       default:

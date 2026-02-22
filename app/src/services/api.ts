@@ -1136,5 +1136,131 @@ export const reportsApi = {
   },
 };
 
+// ========== 营销工具 API ==========
+
+// 优惠券类型
+export interface Coupon {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  type: 'cash' | 'percent' | 'discount';
+  value: number;
+  minAmount: number;
+  maxDiscount?: number;
+  totalCount: number;
+  usedCount: number;
+  perUserLimit: number;
+  startTime: string;
+  endTime: string;
+  applicableType: 'all' | 'homestay' | 'car' | 'meal' | 'ticket';
+  applicableIds?: string;
+  status: 'active' | 'inactive' | 'expired';
+  createdAt: string;
+  updatedAt: string;
+  userUsedCount?: number;
+  discountAmount?: number;
+}
+
+// 促销活动类型
+export interface Promotion {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'discount' | 'special' | 'bundle';
+  discountValue: number;
+  discountType: 'percent' | 'cash';
+  applicableType: 'all' | 'homestay' | 'car' | 'meal' | 'ticket';
+  applicableIds?: string;
+  startTime: string;
+  endTime: string;
+  image?: string;
+  bannerText?: string;
+  status: 'active' | 'inactive' | 'expired';
+  createdAt: string;
+  updatedAt: string;
+  discountAmount?: number;
+}
+
+// 优惠券 API
+export const couponApi = {
+  // 获取优惠券列表
+  getList: (params?: { status?: string; applicableType?: string; page?: number; pageSize?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.applicableType) queryParams.append('applicableType', params.applicableType);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    return fetchApi<{ list: Coupon[]; total: number; page: number; pageSize: number }>(`/coupons?${queryParams.toString()}`);
+  },
+  
+  // 获取优惠券详情
+  getById: (id: string) => fetchApi<Coupon>(`/coupons/${id}`),
+  
+  // 创建优惠券（管理员）
+  create: (data: Partial<Coupon>) => fetchAdminApi<Coupon>('/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  
+  // 更新优惠券（管理员）
+  update: (id: string, data: Partial<Coupon>) => fetchAdminApi<Coupon>(`/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  
+  // 删除优惠券（管理员）
+  delete: (id: string) => fetchAdminApi<void>(`/coupons/${id}`, { method: 'DELETE' }),
+  
+  // 验证优惠券
+  validate: (data: { code: string; amount: number; applicableType: string; applicableId?: string }) => 
+    fetchApi<{ coupon: Coupon; discountAmount: number; finalAmount: number }>('/coupons/validate', { method: 'POST', body: JSON.stringify(data) }),
+  
+  // 使用优惠券
+  use: (data: { code: string; orderId?: string; amount: number }) => 
+    fetchApi<{ discountAmount: number; finalAmount: number }>('/coupons/use', { method: 'POST', body: JSON.stringify(data) }),
+  
+  // 获取用户可用优惠券
+  getAvailable: (params?: { amount?: number; applicableType?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.amount) queryParams.append('amount', params.amount.toString());
+    if (params?.applicableType) queryParams.append('applicableType', params.applicableType);
+    return fetchApi<Coupon[]>(`/coupons/user/available?${queryParams.toString()}`);
+  },
+};
+
+// 促销活动 API
+export const promotionApi = {
+  // 获取促销活动列表
+  getList: (params?: { status?: string; applicableType?: string; page?: number; pageSize?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.applicableType) queryParams.append('applicableType', params.applicableType);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    return fetchApi<{ list: Promotion[]; total: number; page: number; pageSize: number }>(`/promotions?${queryParams.toString()}`);
+  },
+  
+  // 获取当前有效的促销活动
+  getActive: (params?: { applicableType?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.applicableType) queryParams.append('applicableType', params.applicableType);
+    return fetchApi<Promotion[]>(`/promotions/active?${queryParams.toString()}`);
+  },
+  
+  // 获取促销活动详情
+  getById: (id: string) => fetchApi<Promotion>(`/promotions/${id}`),
+  
+  // 创建促销活动（管理员）
+  create: (data: Partial<Promotion>) => fetchAdminApi<Promotion>('/promotions', { method: 'POST', body: JSON.stringify(data) }),
+  
+  // 更新促销活动（管理员）
+  update: (id: string, data: Partial<Promotion>) => fetchAdminApi<Promotion>(`/promotions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  
+  // 删除促销活动（管理员）
+  delete: (id: string) => fetchAdminApi<void>(`/promotions/${id}`, { method: 'DELETE' }),
+  
+  // 检查项目是否有促销活动
+  check: (itemId: string, params?: { applicableType?: string; amount?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.applicableType) queryParams.append('applicableType', params.applicableType);
+    if (params?.amount) queryParams.append('amount', params.amount.toString());
+    return fetchApi<Promotion[]>(`/promotions/check/${itemId}?${queryParams.toString()}`);
+  },
+};
+
 export { fetchApi, fetchAdminApi };
-export type { Notification, NotificationListResponse };

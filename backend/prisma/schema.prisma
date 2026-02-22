@@ -459,8 +459,79 @@ model UsageLog {
   status        String   @default("normal") // normal, warning, critical
   recordedAt    DateTime @default(now()) @map("recorded_at")
   createdAt     DateTime @default(now()) @map("created_at")
-  
+   
   @@index([service, resourceType])
   @@index([recordedAt])
   @@map("usage_logs")
+}
+
+// 优惠券
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique // 优惠券代码
+  name            String   // 优惠券名称
+  description     String?  // 描述
+  type            String   // discount: 折扣券, cash: 现金券, percent: 百分比折扣
+  value           Int      // 折扣值（现金券为泰铢，百分比折扣为1-100）
+  minAmount       Int      @default(0) @map("min_amount") // 最低消费金额
+  maxDiscount     Int?     @map("max_discount") // 最大折扣金额（百分比折扣用）
+  totalCount      Int      @default(0) @map("total_count") // 总发行量
+  usedCount       Int      @default(0) @map("used_count") // 已使用数量
+  perUserLimit    Int      @default(1) @map("per_user_limit") // 每人限用次数
+  startTime       DateTime @map("start_time") // 生效开始时间
+  endTime         DateTime @map("end_time") // 生效结束时间
+  applicableType  String   @default("all") @map("applicable_type") // 适用类型: all, homestay, car, meal, ticket
+  applicableIds   String?  @map("applicable_ids") // 适用项目ID列表（逗号分隔）
+  status          String   @default("active") // active, inactive, expired
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  userCoupons     UserCoupon[]
+  
+  @@index([code])
+  @@index([status])
+  @@index([startTime, endTime])
+  @@map("coupons")
+}
+
+// 用户优惠券关联
+model UserCoupon {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  couponId    String   @map("coupon_id")
+  orderId     String?  @map("order_id") // 使用的订单ID
+  status      String   @default("available") // available, used, expired
+  usedAt      DateTime? @map("used_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  coupon      Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, couponId])
+  @@index([userId])
+  @@index([couponId])
+  @@map("user_coupons")
+}
+
+// 促销活动
+model Promotion {
+  id              String   @id @default(cuid())
+  name            String   // 活动名称
+  description     String?  // 活动描述
+  type            String   // discount: 折扣活动, special: 特价活动, bundle: 套餐活动
+  discountValue   Int      @default(0) @map("discount_value") // 折扣值
+  discountType    String   @default("percent") @map("discount_type") // percent, cash
+  applicableType  String   @default("all") @map("applicable_type") // 适用类型: all, homestay, car, meal, ticket
+  applicableIds   String?  @map("applicable_ids") // 适用项目ID列表
+  startTime       DateTime @map("start_time")
+  endTime         DateTime @map("end_time")
+  image           String?  // 活动图片
+  bannerText      String?  @map("banner_text") // 横幅文案
+  status          String   @default("active") // active, inactive, expired
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  @@index([status])
+  @@index([applicableType])
+  @@index([startTime, endTime])
+  @@map("promotions")
 }
