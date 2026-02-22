@@ -1295,3 +1295,34 @@ const translations = {
 - 下一个功能: F018 (收藏功能)
 - 提交哈希: b43b9fc
 
+
+---
+
+## 会话 20 - F020 移动端适配
+
+**日期:** 2026-02-22
+**Agent:** long-running-coder
+**功能:** F020 移动端适配
+
+### 开始时状态:
+- 已完成功能: 19
+- 当前功能: F020
+
+### 完成的工作:
+- [x] 分析现有移动端适配代码 - 发现157处响应式布局
+- [x] 修复前端依赖问题 (fetchAdminApi, Notification 导出, use-toast 路径)
+- [x] 更新 feature_list.json F020 状态为已完成
+
+### 修改的文件:
+- app/src/services/api.ts
+- app/src/pages/HomestayDetail.tsx
+- app/src/sections/HomestayCard.tsx
+- feature_list.json
+
+### 提交哈希: 61eb664
+
+### 结束时状态:
+- 已完成功能: 20
+- 下一个功能: F022 (营销工具)
+
+---

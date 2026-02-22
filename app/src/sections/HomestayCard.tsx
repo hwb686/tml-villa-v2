@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { favoriteApi, type Homestay } from '@/services/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import { getHashLink } from '@/lib/router';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface HomestayCardProps {
   homestay: Homestay;

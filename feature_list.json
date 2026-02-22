@@ -372,8 +372,9 @@
       "title": "移动端适配",
       "description": "优化移动端体验",
       "free_limit_impact": "无影响",
-      "status": "partial",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "notes": "已完成。项目使用 Tailwind CSS 完整响应式类（sm:, md:, lg:, xl:），共157处响应式布局。导航栏有移动端菜单Hamburger图标，管理后台侧边栏有移动端适配（固定在左侧），所有主要内容组件（卡片、表格、表单等）都有对应的响应式布局。"
     },
     {
       "id": "F021",

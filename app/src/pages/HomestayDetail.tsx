@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { zhCN, enUS, th } from 'date-fns/locale';
 import { getHashLink } from '@/lib/router';
 import { StarRating, RatingStats, ReviewList, ReviewForm } from '@/components/review';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 export default function HomestayDetail() {
   const { t, lang } = useLanguage();

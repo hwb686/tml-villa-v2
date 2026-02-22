@@ -1136,4 +1136,5 @@ export const reportsApi = {
   },
 };
 
-export { fetchApi };
+export { fetchApi, fetchAdminApi };
+export type { Notification, NotificationListResponse };
