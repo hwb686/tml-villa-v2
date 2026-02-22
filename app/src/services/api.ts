@@ -1263,4 +1263,270 @@ export const promotionApi = {
   },
 };
 
+// ========== 会员系统 API (F024) ==========
+
+// 会员等级类型
+export interface MemberLevel {
+  id: string;
+  name: string;
+  nameEn: string;
+  minPoints: number;
+  maxPoints: number;
+  discount: number;
+  pointsRate: number;
+  icon?: string;
+  color?: string;
+  benefits?: string;
+  sortOrder: number;
+  userCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 积分记录类型
+export interface PointLog {
+  id: string;
+  userId: string;
+  points: number;
+  balance: number;
+  type: 'earn_order' | 'earn_review' | 'consume' | 'admin' | 'expire';
+  relatedId?: string;
+  relatedType?: string;
+  remark?: string;
+  createdAt: string;
+}
+
+// 用户会员信息
+export interface UserMembership {
+  points: number;
+  totalPoints: number;
+  level: MemberLevel | null;
+  nextLevel: MemberLevel | null;
+  pointsToNextLevel: number;
+}
+
+// 会员系统 API
+export const membershipApi = {
+  // 获取会员等级列表
+  getLevels: () => fetchApi<MemberLevel[]>('/membership/levels'),
+  
+  // 获取当前用户会员信息
+  getMyInfo: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<UserMembership>('/membership/my', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+  },
+  
+  // 获取积分记录
+  getPointLogs: (params?: { page?: number; pageSize?: number; type?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    if (params?.type) queryParams.append('type', params.type);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<{ list: PointLog[]; total: number; page: number; pageSize: number }>(
+      `/membership/points?${queryParams.toString()}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+  },
+  
+  // 获得积分（订单完成时调用）
+  earnPoints: (data: { points: number; relatedId?: string; relatedType?: string; remark?: string }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<{ points: number; balance: number; totalPoints: number; levelUp: boolean; newLevel?: MemberLevel }>(
+      '/membership/points/earn',
+      { method: 'POST', body: JSON.stringify(data), headers: { 'Authorization': `Bearer ${token}` } }
+    );
+  },
+  
+  // 消费积分
+  consumePoints: (data: { points: number; relatedId?: string; relatedType?: string; remark?: string }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<{ points: number; balance: number }>(
+      '/membership/points/consume',
+      { method: 'POST', body: JSON.stringify(data), headers: { 'Authorization': `Bearer ${token}` } }
+    );
+  },
+};
+
+// 管理端会员系统 API
+export const adminMembershipApi = {
+  // 获取会员等级列表（含用户数量）
+  getLevels: () => fetchAdminApi<(MemberLevel & { userCount: number })[]>('/admin/membership/levels'),
+  
+  // 更新会员等级配置
+  updateLevel: (id: string, data: Partial<MemberLevel>) => 
+    fetchAdminApi<MemberLevel>(`/admin/membership/levels/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  
+  // 创建会员等级
+  createLevel: (data: Partial<MemberLevel>) => 
+    fetchAdminApi<MemberLevel>('/admin/membership/levels', { method: 'POST', body: JSON.stringify(data) }),
+  
+  // 删除会员等级
+  deleteLevel: (id: string) => 
+    fetchAdminApi<void>(`/admin/membership/levels/${id}`, { method: 'DELETE' }),
+  
+  // 获取会员列表
+  getUsers: (params?: { page?: number; pageSize?: number; levelId?: string; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    if (params?.levelId) queryParams.append('levelId', params.levelId);
+    if (params?.search) queryParams.append('search', params.search);
+    return fetchAdminApi<{ list: Array<{
+      id: string;
+      username: string;
+      email: string;
+      phone?: string;
+      points: number;
+      totalPoints: number;
+      level: MemberLevel | null;
+      createdAt: string;
+    }>; total: number; page: number; pageSize: number }>(`/admin/membership/users?${queryParams.toString()}`);
+  },
+  
+  // 调整用户积分
+  adjustPoints: (data: { userId: string; points: number; remark?: string }) => 
+    fetchAdminApi<{ points: number; balance: number }>('/membership/points/admin-adjust', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+// ========== 商家入驻 API (F023) ==========
+
+// 商家类型
+export interface Merchant {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  email?: string;
+  avatar?: string;
+  description?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'suspended';
+  commission: number;
+  bankName?: string;
+  bankAccount?: string;
+  remark?: string;
+  rejectReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  products?: MerchantProduct[];
+}
+
+export interface MerchantProduct {
+  id: string;
+  merchantId: string;
+  productType: 'homestay' | 'car' | 'meal' | 'ticket';
+  productId: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+}
+
+// 用户端商家 API
+export const merchantApi = {
+  // 申请入驻
+  apply: (data: { name: string; phone: string; email?: string; description?: string; bankName?: string; bankAccount?: string }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<Merchant>('/merchants/apply', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+  },
+  
+  // 获取我的商家信息
+  getMyInfo: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<Merchant>('/merchants/my', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+  },
+  
+  // 更新商家信息
+  updateMyInfo: (data: Partial<Merchant>) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('请先登录'));
+    }
+    return fetchApi<Merchant>('/merchants/my', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+  },
+};
+
+// 管理端商家 API
+export const adminMerchantApi = {
+  // 获取商家列表
+  getList: (params?: { page?: number; pageSize?: number; status?: string; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    return fetchAdminApi<{ list: Merchant[]; total: number; page: number; pageSize: number }>(
+      `/admin/merchants?${queryParams.toString()}`
+    );
+  },
+  
+  // 获取商家详情
+  getById: (id: string) => fetchAdminApi<Merchant>(`/admin/merchants/${id}`),
+  
+  // 审核通过
+  approve: (id: string, commission?: number) => 
+    fetchAdminApi<Merchant>(`/admin/merchants/${id}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({ commission }),
+    }),
+  
+  // 审核拒绝
+  reject: (id: string, reason?: string) => 
+    fetchAdminApi<Merchant>(`/admin/merchants/${id}/reject`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason }),
+    }),
+  
+  // 暂停商家
+  suspend: (id: string, reason?: string) => 
+    fetchAdminApi<Merchant>(`/admin/merchants/${id}/suspend`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason }),
+    }),
+  
+  // 恢复商家
+  restore: (id: string) => 
+    fetchAdminApi<Merchant>(`/admin/merchants/${id}/restore`, { method: 'PUT' }),
+  
+  // 更新商家信息
+  update: (id: string, data: Partial<Merchant>) => 
+    fetchAdminApi<Merchant>(`/admin/merchants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  // 获取商家统计
+  getStats: () => fetchAdminApi<{ total: number; pending: number; approved: number; rejected: number; suspended: number }>(
+    '/admin/merchants/stats/overview'
+  ),
+};
+
 export { fetchApi, fetchAdminApi };

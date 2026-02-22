@@ -6612,6 +6612,813 @@ app.get('/api/promotions/check/:itemId', async (req, res) => {
   }
 });
 
+// ============================================
+// 会员系统 API (F024)
+// ============================================
+
+// 获取用户的会员等级（根据累计积分）
+const getUserLevel = async (totalPoints) => {
+  const levels = await prisma.memberLevel.findMany({
+    orderBy: { minPoints: 'asc' },
+  });
+  
+  let currentLevel = levels[0]; // 默认最低等级
+  for (const level of levels) {
+    if (totalPoints >= level.minPoints) {
+      currentLevel = level;
+    }
+  }
+  return currentLevel;
+};
+
+// 更新用户会员等级
+const updateUserLevel = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { totalPoints: true },
+  });
+  
+  if (!user) return null;
+  
+  const level = await getUserLevel(user.totalPoints);
+  
+  await prisma.user.update({
+    where: { id: userId },
+    data: { levelId: level.id },
+  });
+  
+  return level;
+};
+
+// GET /api/membership/levels - 获取会员等级列表
+app.get('/api/membership/levels', async (req, res) => {
+  try {
+    const levels = await prisma.memberLevel.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+    
+    res.json({ code: 200, data: levels });
+  } catch (err) {
+    console.error('Error fetching membership levels:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/membership/my - 获取当前用户会员信息
+app.get('/api/membership/my', authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        level: true,
+      },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    
+    // 获取下一等级信息
+    const allLevels = await prisma.memberLevel.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+    
+    let nextLevel = null;
+    if (user.level) {
+      const currentIndex = allLevels.findIndex(l => l.id === user.levelId);
+      if (currentIndex < allLevels.length - 1) {
+        nextLevel = allLevels[currentIndex + 1];
+      }
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        points: user.points,
+        totalPoints: user.totalPoints,
+        level: user.level,
+        nextLevel,
+        pointsToNextLevel: nextLevel ? nextLevel.minPoints - user.totalPoints : 0,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching membership info:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/membership/points - 获取积分记录
+app.get('/api/membership/points', authMiddleware, async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, type } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    
+    const where = { userId: req.user.id };
+    if (type) where.type = type;
+    
+    const [logs, total] = await Promise.all([
+      prisma.pointLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(pageSize),
+      }),
+      prisma.pointLog.count({ where }),
+    ]);
+    
+    res.json({
+      code: 200,
+      data: {
+        list: logs,
+        total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching point logs:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/membership/points/earn - 获得积分（订单完成时调用）
+app.post('/api/membership/points/earn', authMiddleware, async (req, res) => {
+  try {
+    const { points, relatedId, relatedType, remark } = req.body;
+    
+    if (!points || points <= 0) {
+      return res.status(400).json({ code: 400, msg: '积分必须大于0' });
+    }
+    
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { level: true },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    
+    // 计算实际积分（考虑会员等级积分倍率）
+    const pointsRate = user.level?.pointsRate || 1;
+    const actualPoints = Math.floor(points * pointsRate);
+    
+    // 使用事务更新积分和创建记录
+    const result = await prisma.$transaction(async (tx) => {
+      // 更新用户积分
+      const updatedUser = await tx.user.update({
+        where: { id: req.user.id },
+        data: {
+          points: { increment: actualPoints },
+          totalPoints: { increment: actualPoints },
+        },
+      });
+      
+      // 创建积分记录
+      const log = await tx.pointLog.create({
+        data: {
+          userId: req.user.id,
+          points: actualPoints,
+          balance: updatedUser.points,
+          type: 'earn_order',
+          relatedId,
+          relatedType,
+          remark: remark || `订单获得积分（倍率: ${pointsRate}x）`,
+        },
+      });
+      
+      return { user: updatedUser, log };
+    });
+    
+    // 更新会员等级
+    const newLevel = await updateUserLevel(req.user.id);
+    
+    res.json({
+      code: 200,
+      data: {
+        points: actualPoints,
+        balance: result.user.points,
+        totalPoints: result.user.totalPoints,
+        levelUp: newLevel?.id !== user.levelId,
+        newLevel,
+      },
+      msg: `成功获得 ${actualPoints} 积分`,
+    });
+  } catch (err) {
+    console.error('Error earning points:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/membership/points/consume - 消费积分
+app.post('/api/membership/points/consume', authMiddleware, async (req, res) => {
+  try {
+    const { points, relatedId, relatedType, remark } = req.body;
+    
+    if (!points || points <= 0) {
+      return res.status(400).json({ code: 400, msg: '积分必须大于0' });
+    }
+    
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    
+    if (user.points < points) {
+      return res.status(400).json({ code: 400, msg: '积分不足' });
+    }
+    
+    // 使用事务更新积分和创建记录
+    const result = await prisma.$transaction(async (tx) => {
+      // 更新用户积分
+      const updatedUser = await tx.user.update({
+        where: { id: req.user.id },
+        data: {
+          points: { decrement: points },
+        },
+      });
+      
+      // 创建积分记录
+      const log = await tx.pointLog.create({
+        data: {
+          userId: req.user.id,
+          points: -points, // 负数表示消费
+          balance: updatedUser.points,
+          type: 'consume',
+          relatedId,
+          relatedType,
+          remark,
+        },
+      });
+      
+      return { user: updatedUser, log };
+    });
+    
+    res.json({
+      code: 200,
+      data: {
+        points: -points,
+        balance: result.user.points,
+      },
+      msg: `成功消费 ${points} 积分`,
+    });
+  } catch (err) {
+    console.error('Error consuming points:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/membership/points/admin-adjust - 管理员调整积分
+app.post('/api/membership/points/admin-adjust', verifyAdmin, async (req, res) => {
+  try {
+    const { userId, points, remark } = req.body;
+    
+    if (!userId || !points) {
+      return res.status(400).json({ code: 400, msg: '缺少必要参数' });
+    }
+    
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    
+    // 使用事务更新积分和创建记录
+    const result = await prisma.$transaction(async (tx) => {
+      const updateData = {
+        points: points > 0 ? { increment: points } : { decrement: Math.abs(points) },
+      };
+      
+      // 如果是增加积分，也增加累计积分
+      if (points > 0) {
+        updateData.totalPoints = { increment: points };
+      }
+      
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+      
+      const log = await tx.pointLog.create({
+        data: {
+          userId,
+          points,
+          balance: updatedUser.points,
+          type: 'admin',
+          remark: remark || '管理员调整',
+        },
+      });
+      
+      return { user: updatedUser, log };
+    });
+    
+    // 更新会员等级
+    await updateUserLevel(userId);
+    
+    res.json({
+      code: 200,
+      data: result,
+      msg: `成功调整 ${points > 0 ? '+' : ''}${points} 积分`,
+    });
+  } catch (err) {
+    console.error('Error adjusting points:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/admin/membership/levels - 管理员获取等级列表
+app.get('/api/admin/membership/levels', verifyAdmin, async (req, res) => {
+  try {
+    const levels = await prisma.memberLevel.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+    
+    // 获取每个等级的用户数量
+    const levelsWithCount = await Promise.all(
+      levels.map(async (level) => {
+        const count = await prisma.user.count({
+          where: { levelId: level.id },
+        });
+        return { ...level, userCount: count };
+      })
+    );
+    
+    res.json({ code: 200, data: levelsWithCount });
+  } catch (err) {
+    console.error('Error fetching admin membership levels:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/admin/membership/levels/:id - 管理员更新等级配置
+app.put('/api/admin/membership/levels/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    // 处理 benefits 字段
+    if (updateData.benefits && Array.isArray(updateData.benefits)) {
+      updateData.benefits = JSON.stringify(updateData.benefits);
+    }
+    
+    const level = await prisma.memberLevel.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    res.json({ code: 200, data: level, msg: '等级配置更新成功' });
+  } catch (err) {
+    console.error('Error updating membership level:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// POST /api/admin/membership/levels - 管理员创建等级
+app.post('/api/admin/membership/levels', verifyAdmin, async (req, res) => {
+  try {
+    const {
+      name,
+      nameEn,
+      minPoints,
+      maxPoints,
+      discount,
+      pointsRate,
+      icon,
+      color,
+      benefits,
+      sortOrder,
+    } = req.body;
+    
+    const level = await prisma.memberLevel.create({
+      data: {
+        name,
+        nameEn,
+        minPoints,
+        maxPoints,
+        discount: discount || 0,
+        pointsRate: pointsRate || 1,
+        icon,
+        color,
+        benefits: benefits ? JSON.stringify(benefits) : null,
+        sortOrder: sortOrder || 0,
+      },
+    });
+    
+    res.json({ code: 200, data: level, msg: '等级创建成功' });
+  } catch (err) {
+    console.error('Error creating membership level:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// DELETE /api/admin/membership/levels/:id - 管理员删除等级
+app.delete('/api/admin/membership/levels/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 检查是否有用户使用该等级
+    const userCount = await prisma.user.count({
+      where: { levelId: id },
+    });
+    
+    if (userCount > 0) {
+      return res.status(400).json({ 
+        code: 400, 
+        msg: `无法删除，有 ${userCount} 个用户正在使用该等级` 
+      });
+    }
+    
+    await prisma.memberLevel.delete({ where: { id } });
+    
+    res.json({ code: 200, msg: '等级删除成功' });
+  } catch (err) {
+    console.error('Error deleting membership level:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/admin/membership/users - 管理员获取会员列表
+app.get('/api/admin/membership/users', verifyAdmin, async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, levelId, search } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    
+    const where = {};
+    if (levelId) where.levelId = levelId;
+    if (search) {
+      where.OR = [
+        { username: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+      ];
+    }
+    
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        include: { level: true },
+        orderBy: { totalPoints: 'desc' },
+        skip,
+        take: parseInt(pageSize),
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          phone: true,
+          points: true,
+          totalPoints: true,
+          level: true,
+          createdAt: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+    
+    res.json({
+      code: 200,
+      data: {
+        list: users,
+        total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching membership users:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// 订单完成时自动获得积分的辅助函数
+const earnPointsForOrder = async (userId, orderAmount, orderId) => {
+  try {
+    // 每消费1元获得1积分（基础），会员等级会乘以倍率
+    const basePoints = Math.floor(orderAmount);
+    
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { level: true },
+    });
+    
+    if (!user) return null;
+    
+    const pointsRate = user.level?.pointsRate || 1;
+    const actualPoints = Math.floor(basePoints * pointsRate);
+    
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: {
+          points: { increment: actualPoints },
+          totalPoints: { increment: actualPoints },
+        },
+      });
+      
+      const log = await tx.pointLog.create({
+        data: {
+          userId,
+          points: actualPoints,
+          balance: updatedUser.points,
+          type: 'earn_order',
+          relatedId: orderId,
+          relatedType: 'order',
+          remark: `订单完成获得积分（倍率: ${pointsRate}x）`,
+        },
+      });
+      
+      return { user: updatedUser, log };
+    });
+    
+    // 更新会员等级
+    await updateUserLevel(userId);
+    
+    return result;
+  } catch (err) {
+    console.error('Error earning points for order:', err);
+    return null;
+  }
+};
+
+// ============================================
+// 商家入驻 API (F023)
+// ============================================
+
+// POST /api/merchants/apply - 申请入驻
+app.post('/api/merchants/apply', authMiddleware, async (req, res) => {
+  try {
+    const { name, phone, email, description, bankName, bankAccount } = req.body;
+    
+    if (!name || !phone) {
+      return res.status(400).json({ code: 400, msg: '商家名称和联系电话为必填项' });
+    }
+    
+    // 检查用户是否已经是商家
+    const existingMerchant = await prisma.merchant.findUnique({
+      where: { userId: req.user.id },
+    });
+    
+    if (existingMerchant) {
+      return res.status(400).json({ code: 400, msg: '您已经申请过商家入驻' });
+    }
+    
+    const merchant = await prisma.merchant.create({
+      data: {
+        userId: req.user.id,
+        name,
+        phone,
+        email,
+        description,
+        bankName,
+        bankAccount,
+        status: 'pending',
+      },
+    });
+    
+    res.json({ code: 200, data: merchant, msg: '商家入驻申请已提交，请等待审核' });
+  } catch (err) {
+    console.error('Error applying merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/merchants/my - 获取我的商家信息
+app.get('/api/merchants/my', authMiddleware, async (req, res) => {
+  try {
+    const merchant = await prisma.merchant.findUnique({
+      where: { userId: req.user.id },
+      include: {
+        products: {
+          where: { status: 'active' },
+        },
+      },
+    });
+    
+    if (!merchant) {
+      return res.status(404).json({ code: 404, msg: '您还不是商家' });
+    }
+    
+    res.json({ code: 200, data: merchant });
+  } catch (err) {
+    console.error('Error fetching merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/merchants/my - 更新商家信息
+app.put('/api/merchants/my', authMiddleware, async (req, res) => {
+  try {
+    const merchant = await prisma.merchant.findUnique({
+      where: { userId: req.user.id },
+    });
+    
+    if (!merchant) {
+      return res.status(404).json({ code: 404, msg: '商家不存在' });
+    }
+    
+    const updateData = { ...req.body };
+    delete updateData.status; // 不允许用户自己修改状态
+    delete updateData.commission; // 不允许用户自己修改佣金
+    
+    const updatedMerchant = await prisma.merchant.update({
+      where: { id: merchant.id },
+      data: updateData,
+    });
+    
+    res.json({ code: 200, data: updatedMerchant, msg: '商家信息更新成功' });
+  } catch (err) {
+    console.error('Error updating merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/admin/merchants - 管理员获取商家列表
+app.get('/api/admin/merchants', verifyAdmin, async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, status, search } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    
+    const where = {};
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    
+    const [merchants, total] = await Promise.all([
+      prisma.merchant.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(pageSize),
+      }),
+      prisma.merchant.count({ where }),
+    ]);
+    
+    res.json({
+      code: 200,
+      data: {
+        list: merchants,
+        total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching merchants:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/admin/merchants/:id - 管理员获取商家详情
+app.get('/api/admin/merchants/:id', verifyAdmin, async (req, res) => {
+  try {
+    const merchant = await prisma.merchant.findUnique({
+      where: { id: req.params.id },
+      include: {
+        products: true,
+      },
+    });
+    
+    if (!merchant) {
+      return res.status(404).json({ code: 404, msg: '商家不存在' });
+    }
+    
+    res.json({ code: 200, data: merchant });
+  } catch (err) {
+    console.error('Error fetching merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/admin/merchants/:id/approve - 管理员审核通过
+app.put('/api/admin/merchants/:id/approve', verifyAdmin, async (req, res) => {
+  try {
+    const { commission } = req.body;
+    
+    const merchant = await prisma.merchant.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'approved',
+        commission: commission || 10,
+      },
+    });
+    
+    res.json({ code: 200, data: merchant, msg: '商家审核通过' });
+  } catch (err) {
+    console.error('Error approving merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/admin/merchants/:id/reject - 管理员审核拒绝
+app.put('/api/admin/merchants/:id/reject', verifyAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const merchant = await prisma.merchant.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'rejected',
+        rejectReason: reason,
+      },
+    });
+    
+    res.json({ code: 200, data: merchant, msg: '商家审核已拒绝' });
+  } catch (err) {
+    console.error('Error rejecting merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/admin/merchants/:id/suspend - 管理员暂停商家
+app.put('/api/admin/merchants/:id/suspend', verifyAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const merchant = await prisma.merchant.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'suspended',
+        remark: reason,
+      },
+    });
+    
+    res.json({ code: 200, data: merchant, msg: '商家已暂停' });
+  } catch (err) {
+    console.error('Error suspending merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/admin/merchants/:id/restore - 管理员恢复商家
+app.put('/api/admin/merchants/:id/restore', verifyAdmin, async (req, res) => {
+  try {
+    const merchant = await prisma.merchant.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'approved',
+      },
+    });
+    
+    res.json({ code: 200, data: merchant, msg: '商家已恢复' });
+  } catch (err) {
+    console.error('Error restoring merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// PUT /api/admin/merchants/:id - 管理员更新商家信息
+app.put('/api/admin/merchants/:id', verifyAdmin, async (req, res) => {
+  try {
+    const updateData = { ...req.body };
+    
+    const merchant = await prisma.merchant.update({
+      where: { id: req.params.id },
+      data: updateData,
+    });
+    
+    res.json({ code: 200, data: merchant, msg: '商家信息更新成功' });
+  } catch (err) {
+    console.error('Error updating merchant:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
+// GET /api/admin/merchants/stats/overview - 商家统计概览
+app.get('/api/admin/merchants/stats/overview', verifyAdmin, async (req, res) => {
+  try {
+    const [total, pending, approved, rejected, suspended] = await Promise.all([
+      prisma.merchant.count(),
+      prisma.merchant.count({ where: { status: 'pending' } }),
+      prisma.merchant.count({ where: { status: 'approved' } }),
+      prisma.merchant.count({ where: { status: 'rejected' } }),
+      prisma.merchant.count({ where: { status: 'suspended' } }),
+    ]);
+    
+    res.json({
+      code: 200,
+      data: {
+        total,
+        pending,
+        approved,
+        rejected,
+        suspended,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching merchant stats:', err);
+    res.status(500).json({ code: 500, msg: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

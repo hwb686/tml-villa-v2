@@ -20,6 +20,8 @@ import CalendarView from '@/pages/CalendarView';
 import UsageMonitor from '@/pages/UsageMonitor';
 import Coupons from '@/pages/Coupons';
 import Promotions from '@/pages/Promotions';
+import MemberLevels from '@/pages/MemberLevels';
+import Merchants from '@/pages/Merchants';
 
 import Finance from '@/pages/Finance';
 import Costs from '@/pages/Costs';
@@ -118,6 +120,10 @@ case 'car-rentals':
         return <Coupons />;
       case 'promotions':
         return <Promotions />;
+      case 'member-levels':
+        return <MemberLevels />;
+      case 'merchants':
+        return <Merchants />;
       case 'settings':
         return <Settings />;
       default:

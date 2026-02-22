@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { userApi, bookingApi, favoriteApi, reviewApi, notificationApi } from '@/services/api';
-import type { Notification, Review } from '@/services/api';
+import { userApi, bookingApi, favoriteApi, reviewApi, notificationApi, membershipApi } from '@/services/api';
+import type { Notification, Review, UserMembership } from '@/services/api';
 import { getHashLink } from '@/lib/router';
 import Navbar from '@/sections/Navbar';
 import Footer from '@/sections/Footer';
 import {
   User, Mail, Phone, Calendar, Heart, Package, Settings,
   Edit2, Lock, LogOut, ChevronRight, Star, MapPin, Loader2, MessageSquare, Bell,
-  Check, Trash2, PackageCheck, XCircle
+  Check, Trash2, PackageCheck, XCircle, Crown, Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,6 +75,7 @@ export default function UserCenter() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [membershipInfo, setMembershipInfo] = useState<UserMembership | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -153,7 +154,15 @@ export default function UserCenter() {
         console.log('No notifications');
       }
 
-    } catch (err) {
+      // 加载会员信息
+      try {
+        const membershipRes = await membershipApi.getMyInfo();
+        setMembershipInfo(membershipRes.data);
+      } catch (e) {
+        console.log('No membership info');
+      }
+
+     } catch (err) {
       console.error('Failed to load user data:', err);
       localStorage.removeItem('userToken');
       window.location.hash = '/';
@@ -359,7 +368,18 @@ export default function UserCenter() {
           </Card>
 
           {/* 快捷入口 */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab('membership')}>
+              <CardContent className="p-4 text-center">
+                <div className="relative inline-block">
+                  <Crown className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+                </div>
+                <p className="font-medium">会员中心</p>
+                <p className="text-sm text-gray-500">
+                  {membershipInfo?.level?.name || '普通会员'}
+                </p>
+              </CardContent>
+            </Card>
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab('bookings')}>
               <CardContent className="p-4 text-center">
                 <Package className="h-8 w-8 mx-auto mb-2 text-champagne" />
@@ -407,6 +427,7 @@ export default function UserCenter() {
           {/* 内容标签页 */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
+              <TabsTrigger value="membership">会员中心</TabsTrigger>
               <TabsTrigger value="profile">个人资料</TabsTrigger>
               <TabsTrigger value="bookings">我的订单</TabsTrigger>
               <TabsTrigger value="notifications" className="relative">
@@ -420,6 +441,135 @@ export default function UserCenter() {
               <TabsTrigger value="favorites">我的收藏</TabsTrigger>
               <TabsTrigger value="reviews">我的评价</TabsTrigger>
             </TabsList>
+
+            {/* 会员中心 */}
+            <TabsContent value="membership">
+              <div className="space-y-6">
+                {/* 会员信息卡片 */}
+                <Card 
+                  className="overflow-hidden"
+                  style={{
+                    background: membershipInfo?.level?.color 
+                      ? `linear-gradient(135deg, ${membershipInfo.level.color}, ${membershipInfo.level.color}dd)`
+                      : 'linear-gradient(135deg, #CD7F32, #8B4513)'
+                  }}
+                >
+                  <CardContent className="p-6 text-white">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="text-5xl">{membershipInfo?.level?.icon || '🥉'}</div>
+                      <div>
+                        <div className="text-2xl font-bold">{membershipInfo?.level?.name || '普通会员'}</div>
+                        <div className="text-sm opacity-80">{membershipInfo?.level?.nameEn || 'Regular Member'}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/20 rounded-lg p-4">
+                        <div className="text-sm opacity-80">当前积分</div>
+                        <div className="text-3xl font-bold">{membershipInfo?.points?.toLocaleString() || 0}</div>
+                      </div>
+                      <div className="bg-white/20 rounded-lg p-4">
+                        <div className="text-sm opacity-80">累计积分</div>
+                        <div className="text-3xl font-bold">{membershipInfo?.totalPoints?.toLocaleString() || 0}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 升级进度 */}
+                {membershipInfo?.nextLevel && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>距离升级到「{membershipInfo.nextLevel.name}」</span>
+                        <span>还需 {membershipInfo.pointsToNextLevel.toLocaleString()} 积分</span>
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-500"
+                          style={{ 
+                            width: `${Math.min(100, ((membershipInfo.totalPoints - (membershipInfo.level?.minPoints || 0)) / 
+                              ((membershipInfo.level?.maxPoints || 999) - (membershipInfo.level?.minPoints || 0))) * 100)}%` 
+                          }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 会员权益 */}
+                {membershipInfo?.level?.benefits && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>当前等级权益</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(() => {
+                          try {
+                            const benefits = JSON.parse(membershipInfo.level.benefits || '[]');
+                            return benefits.map((benefit: string, index: number) => (
+                              <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                                <Check className="h-4 w-4 text-green-500" />
+                                {benefit}
+                              </div>
+                            ));
+                          } catch {
+                            return null;
+                          }
+                        })()}
+                      </div>
+                      {membershipInfo.level.discount > 0 && (
+                        <div className="mt-4 pt-4 border-t">
+                          <div className="flex items-center gap-2">
+                            <Gift className="h-5 w-5 text-red-500" />
+                            <span className="text-red-500 font-medium">{membershipInfo.level.discount}% 折扣</span>
+                            <span className="text-gray-500 text-sm">消费时自动享受优惠</span>
+                          </div>
+                        </div>
+                      )}
+                      {membershipInfo.level.pointsRate > 1 && (
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Star className="h-5 w-5 text-blue-500" />
+                            <span className="text-blue-500 font-medium">{membershipInfo.level.pointsRate}x 积分倍率</span>
+                            <span className="text-gray-500 text-sm">消费时获得更多积分</span>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 积分说明 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>如何获取积分？</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 flex-shrink-0">
+                          <Package className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">消费获得积分</div>
+                          <div className="text-gray-500">每消费 1 元可获得 1 积分（会员等级越高，倍率越高）</div>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">评价获得积分</div>
+                          <div className="text-gray-500">完成订单后发表评价可获得额外积分奖励</div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
             <TabsContent value="profile">
               <Card>

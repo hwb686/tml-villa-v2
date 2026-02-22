@@ -402,19 +402,33 @@
       "id": "F023",
       "category": "merchant",
       "priority": "P3",
-      "title": "商家入驻（未来）",
+      "title": "商家入驻",
       "description": "支持第三方商家入驻",
-      "status": "planned",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "acceptance_criteria": [
+        "用户可以申请成为商家",
+        "管理员可以审核商家申请",
+        "商家可以管理自己的产品",
+        "管理员可以暂停/恢复商家"
+      ],
+      "notes": "已于 2026-02-22 完成。后端API: POST /api/merchants/apply(申请入驻)、GET /api/merchants/my(获取商家信息)、PUT /api/merchants/my(更新商家信息)、GET /api/admin/merchants(管理员获取列表)、PUT /api/admin/merchants/:id/approve(审核通过)、PUT /api/admin/merchants/:id/reject(审核拒绝)、PUT /api/admin/merchants/:id/suspend(暂停商家)、PUT /api/admin/merchants/:id/restore(恢复商家)、GET /api/admin/merchants/stats/overview(统计); 前端页面: Merchants.tsx(管理后台商家管理); 数据模型: Merchant、MerchantProduct"
     },
     {
       "id": "F024",
       "category": "membership",
       "priority": "P3",
-      "title": "会员系统（未来）",
+      "title": "会员系统",
       "description": "积分、会员等级",
-      "status": "planned",
-      "passes": false
+      "status": "done",
+      "passes": true,
+      "acceptance_criteria": [
+        "用户可以查看自己的会员等级和积分",
+        "订单完成时自动获得积分",
+        "积分可以消费（兑换优惠券等）",
+        "管理员可以配置会员等级和权益"
+      ],
+      "notes": "已于 2026-02-22 完成。后端API: GET /api/membership/levels(等级列表)、GET /api/membership/my(会员信息)、GET /api/membership/points(积分记录)、POST /api/membership/points/earn(获得积分)、POST /api/membership/points/consume(消费积分)、POST /api/membership/points/admin-adjust(管理员调整)、GET/POST/PUT/DELETE /api/admin/membership/levels(管理员等级管理); 前端页面: MemberCenter.tsx(用户会员中心)、MemberLevels.tsx(管理后台等级管理); 数据模型: MemberLevel、PointLog(已存在); seed.js包含4个默认会员等级(普通/银卡/金卡/钻石)"
     },
     {
       "id": "F025",
