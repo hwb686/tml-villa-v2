@@ -328,8 +328,8 @@
       "title": "搜索优化",
       "description": "高级搜索和筛选",
       "free_limit_impact": "无影响",
-      "status": "partial",
-      "passes": false
+      "status": "done",
+      "passes": true
     },
     {
       "id": "F018",

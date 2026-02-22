@@ -1179,3 +1179,41 @@
 - 备注: 由于本地开发环境Node版本冲突，未完成端到端测试。代码已完整实现，建议在部署后验证功能。
 
 ---
+
+══════════════════════════════════════════════════════════════
+
+## 会话 18 - F017 搜索优化 / SESSION 18 - Search Optimization
+
+**日期:** 2026-02-22
+**Agent:** long-running-coder
+**功能:** F017 搜索优化
+
+### 技术实现:
+- 添加了 FilterPanel 组件支持多维度筛选
+- 添加了 HighlightedText 组件实现关键词高亮
+- 添加了 SortSelector 组件支持排序选项
+- 创建了 SearchResults 页面展示搜索结果
+- 优化了后端搜索 API 支持关键词、价格范围、房型筛选
+- 支持排序：价格升序/降序、评分、距离
+
+### 修改的文件:
+- app/src/components/common/FilterPanel.tsx (新建)
+- app/src/components/common/HighlightedText.tsx (新建)
+- app/src/components/common/SortSelector.tsx (新建)
+- app/src/pages/SearchResults.tsx (新建)
+- app/src/sections/SearchModal.tsx (修改)
+- app/src/services/api.ts (修改)
+- backend/api/db.js (修改)
+
+### 验收标准验证:
+- [x] 支持关键词搜索
+- [x] 支持价格范围筛选
+- [x] 支持房型筛选
+- [x] 支持排序（价格/评分/距离）
+- [x] 搜索结果高亮关键词
+
+### 结束时状态:
+- 已完成功能: 18
+- 下一个功能: F018 (收藏功能)
+- 提交哈希: b43b9fc
+
