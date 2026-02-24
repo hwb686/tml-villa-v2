@@ -8,7 +8,6 @@ import FilterPanel, { type FilterParams } from '@/components/common/FilterPanel'
 import SortSelector, { type SortOption } from '@/components/common/SortSelector';
 import HighlightedText from '@/components/common/HighlightedText';
 import Navbar from '@/sections/Navbar';
-import Footer from '@/sections/Footer';
 import { useHashRouter } from '@/lib/router';
 
 export default function SearchResults() {
@@ -214,8 +213,6 @@ export default function SearchResults() {
           )}
         </div>
       </main>
-      
-      <Footer />
     </>
   );
 }

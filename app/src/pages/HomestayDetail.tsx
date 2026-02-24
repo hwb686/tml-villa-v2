@@ -14,23 +14,64 @@ import { homestayApi, bookingApi, reviewApi, favoriteApi, type Homestay, type Re
 import { platformSyncApi } from '@/services/platformSyncApi';
 import { format } from 'date-fns';
 import { zhCN, enUS, th } from 'date-fns/locale';
-import { getHashLink } from '@/lib/router';
+import { getHashLink, useHashRouter } from '@/lib/router';
 import { StarRating, RatingStats, ReviewList, ReviewForm } from '@/components/review';
 import { useToast } from '@/hooks/use-toast';
+
+const getShareMessage = (type: 'success' | 'error', lang: string) => {
+  const messages = {
+    success: {
+      zh: '链接已复制',
+      en: 'Link copied',
+      th: 'คัดลอกลิงก์แล้ว',
+    },
+    error: {
+      zh: '分享失败，请重试',
+      en: 'Share failed, please try again',
+      th: 'แชร์ไม่สำเร็จ กรุณาลองอีกครั้ง',
+    },
+  };
+  return messages[type][lang as keyof typeof messages['success']] || messages[type].en;
+};
+
+const handleShare = async (homestayTitle: string | undefined, lang: string, toast: (options: { title: string }) => void) => {
+  const url = window.location.href;
+  const title = homestayTitle || 'TML Villa';
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: getShareMessage('success', lang) });
+    } catch {
+      toast({ title: getShareMessage('error', lang) });
+    }
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url });
+    } catch {
+      copyToClipboard(url);
+    }
+  } else {
+    copyToClipboard(url);
+  }
+};
 
 export default function HomestayDetail() {
   const { t, lang } = useLanguage();
   const { toast } = useToast();
+  const { path } = useHashRouter(); // 使用 hook 获取 path
   const [id, setId] = useState<string>('');
   const [homestay, setHomestay] = useState<Homestay | null>(null);
   
-  // Get ID from hash URL
+  // Get ID from path (正确处理查询参数)
   useEffect(() => {
-    const hash = window.location.hash;
-    const pathParts = hash.replace('#', '').split('/');
+    const pathWithoutQuery = path.split('?')[0]; // 移除查询参数
+    const pathParts = pathWithoutQuery.split('/');
     const homestayId = pathParts[pathParts.length - 1];
     setId(homestayId);
-  }, []);
+  }, [path]); // 依赖 path
   
   const [isLoading, setIsLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -336,7 +377,7 @@ export default function HomestayDetail() {
               >
                 <Heart size={20} className={`${isFavorite ? 'fill-champagne text-champagne' : 'text-gray-600'} ${isTogglingFavorite ? 'animate-pulse' : ''}`} />
               </button>
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+<button onClick={() => handleShare(homestay?.title, lang, toast)} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                 <Share size={20} className="text-gray-600" />
               </button>
             </div>

@@ -19,7 +19,16 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   if (!normalizedEndpoint.startsWith('/')) { normalizedEndpoint = '/' + normalizedEndpoint; }
   if (!normalizedEndpoint.startsWith('/api')) { normalizedEndpoint = '/api' + normalizedEndpoint; }
   const url = `${API_BASE_URL}${normalizedEndpoint}`;
-  const response = await fetch(url, { headers: { 'Content-Type': 'application/json', ...options.headers }, ...options });
+  const token = localStorage.getItem('userToken');
+  const { headers: optionHeaders, ...restOptions } = options;
+  const response = await fetch(url, { 
+    ...restOptions,
+    headers: { 
+      'Content-Type': 'application/json', 
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...optionHeaders 
+    }
+  });
   if (!response.ok) { throw new Error(`API Error: ${response.status} ${response.statusText}`); }
   const backendResponse: BackendResponse<T> = await response.json();
   return { data: backendResponse.data, success: backendResponse.code === 200, message: backendResponse.msg };
@@ -186,18 +195,6 @@ export const orderApi = {
   },
   getById: (id: string) => fetchApi<Order>(`/orders/${id}`),
   updateStatus: (id: string, status: string) => fetchApi<Order>(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
-};
-
-export const merchantApi = {
-  getAll: (params?: { type?: string }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.type) queryParams.append('type', params.type);
-    return fetchApi<Merchant[]>(`/merchants?${queryParams.toString()}`);
-  },
-  getById: (id: string) => fetchApi<Merchant>(`/merchants/${id}`),
-  create: (data: CreateMerchantData) => fetchApi<Merchant>('/merchants', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<CreateMerchantData>) => fetchApi<Merchant>(`/merchants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string) => fetchApi<void>(`/merchants/${id}`, { method: 'DELETE' }),
 };
 
 export const financeApi = {
@@ -1312,7 +1309,7 @@ export const membershipApi = {
   
   // 获取当前用户会员信息
   getMyInfo: () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }
@@ -1327,7 +1324,7 @@ export const membershipApi = {
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
     if (params?.type) queryParams.append('type', params.type);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }
@@ -1339,7 +1336,7 @@ export const membershipApi = {
   
   // 获得积分（订单完成时调用）
   earnPoints: (data: { points: number; relatedId?: string; relatedType?: string; remark?: string }) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }
@@ -1351,7 +1348,7 @@ export const membershipApi = {
   
   // 消费积分
   consumePoints: (data: { points: number; relatedId?: string; relatedType?: string; remark?: string }) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }
@@ -1438,7 +1435,7 @@ export interface MerchantProduct {
 export const merchantApi = {
   // 申请入驻
   apply: (data: { name: string; phone: string; email?: string; description?: string; bankName?: string; bankAccount?: string }) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }
@@ -1451,7 +1448,7 @@ export const merchantApi = {
   
   // 获取我的商家信息
   getMyInfo: () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }
@@ -1462,7 +1459,7 @@ export const merchantApi = {
   
   // 更新商家信息
   updateMyInfo: (data: Partial<Merchant>) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       return Promise.reject(new Error('请先登录'));
     }

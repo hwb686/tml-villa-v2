@@ -252,7 +252,7 @@ export default function Reviews() {
                   <div className="ml-12 p-3 bg-blue-50 rounded-lg mb-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-blue-700 mb-2">
                       <MessageSquare className="h-4 w-4" />
-                      <span>房东回复</span>
+                      <span>回复</span>
                       {review.replyAt && (
                         <span className="text-xs text-blue-500 ml-auto">
                           {formatDateStr(review.replyAt)}

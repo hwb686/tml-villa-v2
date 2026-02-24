@@ -4,7 +4,6 @@ import { userApi, bookingApi, favoriteApi, reviewApi, notificationApi, membershi
 import type { Notification, Review, UserMembership } from '@/services/api';
 import { getHashLink } from '@/lib/router';
 import Navbar from '@/sections/Navbar';
-import Footer from '@/sections/Footer';
 import {
   User, Mail, Phone, Calendar, Heart, Package, Settings,
   Edit2, Lock, LogOut, ChevronRight, Star, MapPin, Loader2, MessageSquare, Bell,
@@ -923,7 +922,7 @@ export default function UserCenter() {
                             )}
                             {review.reply && (
                               <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-600">
-                                <span className="font-medium">房东回复：</span>{review.reply}
+                                {review.reply}
                               </div>
                             )}
                           </div>
@@ -949,7 +948,6 @@ export default function UserCenter() {
         booking={selectedBooking}
       />
 
-      <Footer />
     </div>
   );
 }

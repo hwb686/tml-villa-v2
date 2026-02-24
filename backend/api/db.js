@@ -144,13 +144,19 @@ app.get('/api/homestays', async (req, res) => {
       guests
     } = req.query;
     
-    // 构建缓存键（包含所有搜索参数）
-    const cacheKey = `homestays:${JSON.stringify(req.query)}`;
-    const fromCache = cache.get(cacheKey);
-    if (fromCache) {
-      return res.json(fromCache);
+    // 可选：解析用户 token 以获取收藏状态
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.id;
+      } catch (e) {
+        // Token 无效，继续作为未登录用户处理
+      }
     }
-
+    
     // 构建 Prisma 查询条件
     const where = {};
     
@@ -217,6 +223,33 @@ app.get('/api/homestays', async (req, res) => {
       },
     });
     
+    // 如果用户已登录，获取用户的收藏列表
+    let userFavorites = new Set();
+    if (userId) {
+      const favorites = await prisma.favorite.findMany({
+        where: { userId },
+        select: { houseId: true },
+      });
+      userFavorites = new Set(favorites.map(f => f.houseId));
+    }
+    
+    // 获取所有房源的评价统计
+    const homestayIds = homestays.map(h => h.id);
+    const reviewStats = await prisma.review.groupBy({
+      by: ['houseId'],
+      where: { houseId: { in: homestayIds }, status: 'active' },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+    
+    const reviewStatsMap = {};
+    reviewStats.forEach(r => {
+      reviewStatsMap[r.houseId] = {
+        rating: Math.round((r._avg.rating || 0) * 10) / 10,
+        count: r._count.id,
+      };
+    });
+    
     // Transform to match frontend format
     const formatted = homestays.map(h => {
       // 生成高亮文本
@@ -224,13 +257,15 @@ app.get('/api/homestays', async (req, res) => {
       const locationHighlight = highlightKeyword(h.location, keyword);
       const descriptionHighlight = highlightKeyword(h.description, keyword);
       
+      const stats = reviewStatsMap[h.id] || { rating: 0, count: 0 };
+      
       return {
         id: h.id,
         title: h.title,
         location: h.location,
         price: h.price,
-        rating: h.rating,
-        reviews: h.reviews,
+        rating: stats.rating,
+        reviews: stats.count,
         images: h.images,
         type: h.type,
         guests: h.guests,
@@ -239,7 +274,7 @@ app.get('/api/homestays', async (req, res) => {
         bathrooms: h.bathrooms,
         amenities: h.amenities,
         description: h.description,
-        isFavorite: h.isFavorite,
+        isFavorite: userId ? userFavorites.has(h.id) : false,
         // 高亮字段
         highlightedTitle: titleHighlight.highlighted,
         highlightedLocation: locationHighlight.highlighted,
@@ -283,6 +318,19 @@ app.get('/api/homestays', async (req, res) => {
 
 app.get('/api/homestays/:id', async (req, res) => {
   try {
+    // 解析用户token获取收藏状态
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.id;
+      } catch (e) {
+        // Token无效，继续作为未登录用户处理
+      }
+    }
+    
     const homestay = await prisma.homestay.findUnique({
       where: { id: req.params.id },
       include: { stocks: true },
@@ -292,6 +340,25 @@ app.get('/api/homestays/:id', async (req, res) => {
       return res.status(404).json({ code: 404, msg: 'Not found' });
     }
     
+    // 如果用户已登录，检查是否收藏
+    let isFavorite = false;
+    if (userId) {
+      const favorite = await prisma.favorite.findFirst({
+        where: { userId, houseId: homestay.id },
+      });
+      isFavorite = !!favorite;
+    }
+    
+    // 获取评价统计
+    const reviewStats = await prisma.review.aggregate({
+      where: { houseId: homestay.id, status: 'active' },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+    
+    const rating = reviewStats._avg.rating || 0;
+    const reviewCount = reviewStats._count.id || 0;
+    
     res.json({
       code: 200,
       data: {
@@ -299,8 +366,8 @@ app.get('/api/homestays/:id', async (req, res) => {
         title: homestay.title,
         location: homestay.location,
         price: homestay.price,
-        rating: homestay.rating,
-        reviews: homestay.reviews,
+        rating: Math.round(rating * 10) / 10,
+        reviews: reviewCount,
         images: homestay.images,
         type: homestay.type,
         guests: homestay.guests,
@@ -309,7 +376,7 @@ app.get('/api/homestays/:id', async (req, res) => {
         bathrooms: homestay.bathrooms,
         amenities: homestay.amenities,
         description: homestay.description,
-        isFavorite: homestay.isFavorite,
+        isFavorite,
         host: {
           name: homestay.hostName,
           avatar: homestay.hostAvatar,
@@ -323,7 +390,7 @@ app.get('/api/homestays/:id', async (req, res) => {
   }
 });
 
-app.post('/api/homestays', async (req, res) => {
+app.post('/api/homestays', verifyAdmin, async (req, res) => {
   try {
     const { title, location, price, images, type, guests, bedrooms, beds, bathrooms, amenities, description } = req.body;
     
@@ -356,7 +423,7 @@ app.post('/api/homestays', async (req, res) => {
   }
 });
 
-app.put('/api/homestays/:id', async (req, res) => {
+app.put('/api/homestays/:id', verifyAdmin, async (req, res) => {
   try {
     const { title, location, price, images, type, guests, bedrooms, beds, bathrooms, amenities, description } = req.body;
     
@@ -386,7 +453,7 @@ app.put('/api/homestays/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/homestays/:id', async (req, res) => {
+app.delete('/api/homestays/:id', verifyAdmin, async (req, res) => {
   try {
     await prisma.homestay.delete({
       where: { id: req.params.id },
@@ -432,7 +499,7 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // Users
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', verifyAdmin, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       include: { orders: true },
@@ -455,7 +522,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.get('/api/users/:id', async (req, res) => {
+app.get('/api/users/:id', verifyAdmin, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
@@ -472,7 +539,7 @@ app.get('/api/users/:id', async (req, res) => {
   }
 });
 
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', verifyAdmin, async (req, res) => {
   try {
     const user = await prisma.user.update({
       where: { id: req.params.id },
@@ -498,7 +565,7 @@ app.get('/api/users/me', async (req, res) => {
 });
 
 // Orders
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', verifyAdmin, async (req, res) => {
   try {
     const { type } = req.query;
     const where = type ? { type } : {};
@@ -526,7 +593,7 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-app.get('/api/orders/:id', async (req, res) => {
+app.get('/api/orders/:id', verifyAdmin, async (req, res) => {
   try {
     const order = await prisma.order.findFirst({
       where: { orderId: req.params.id },
@@ -556,7 +623,7 @@ app.get('/api/orders/:id', async (req, res) => {
   }
 });
 
-app.put('/api/orders/:id/status', async (req, res) => {
+app.put('/api/orders/:id/status', verifyAdmin, async (req, res) => {
   try {
     const { status } = req.body;
     
@@ -1582,8 +1649,8 @@ app.delete('/api/car-configs/:id/stock/cleanup', verifyAdmin, async (req, res) =
 // Driver APIs (司机管理)
 // ============================================
 
-// GET /api/drivers - 获取所有司机
-app.get('/api/drivers', async (req, res) => {
+// GET /api/drivers - 获取所有司机（管理员）
+app.get('/api/drivers', verifyAdmin, async (req, res) => {
   try {
     const { status } = req.query;
     const where = {};
@@ -1613,8 +1680,8 @@ app.get('/api/drivers', async (req, res) => {
   }
 });
 
-// GET /api/drivers/:id - 获取单个司机
-app.get('/api/drivers/:id', async (req, res) => {
+// GET /api/drivers/:id - 获取单个司机（管理员）
+app.get('/api/drivers/:id', verifyAdmin, async (req, res) => {
   try {
     const driver = await prisma.driver.findUnique({
       where: { id: req.params.id },
@@ -1715,8 +1782,8 @@ app.delete('/api/drivers/:id', verifyAdmin, async (req, res) => {
 // Driver Schedule APIs (司机排班)
 // ============================================
 
-// GET /api/drivers/:id/schedule - 获取司机排班
-app.get('/api/drivers/:id/schedule', async (req, res) => {
+// GET /api/drivers/:id/schedule - 获取司机排班（管理员）
+app.get('/api/drivers/:id/schedule', verifyAdmin, async (req, res) => {
   try {
     const { startDate, endDate, month } = req.query;
     
@@ -1970,8 +2037,8 @@ app.get('/api/driver-schedules/calendar', verifyAdmin, async (req, res) => {
 // 员工管理 API (Staff Management)
 // =====================================================
 
-// GET /api/staffs - 获取员工列表
-app.get('/api/staffs', async (req, res) => {
+// GET /api/staffs - 获取员工列表（管理员）
+app.get('/api/staffs', verifyAdmin, async (req, res) => {
   try {
     const { staffType, status, search } = req.query;
     
@@ -2041,8 +2108,8 @@ app.get('/api/staffs/types', (req, res) => {
   });
 });
 
-// GET /api/staffs/:id - 获取员工详情
-app.get('/api/staffs/:id', async (req, res) => {
+// GET /api/staffs/:id - 获取员工详情（管理员）
+app.get('/api/staffs/:id', verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -2206,8 +2273,8 @@ app.delete('/api/staffs/:id', verifyAdmin, async (req, res) => {
   }
 });
 
-// GET /api/staffs/:id/schedule - 获取员工排班
-app.get('/api/staffs/:id/schedule', async (req, res) => {
+// GET /api/staffs/:id/schedule - 获取员工排班（管理员）
+app.get('/api/staffs/:id/schedule', verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
@@ -2392,7 +2459,7 @@ app.get('/api/staff-schedules/calendar', verifyAdmin, async (req, res) => {
 });
 
 // Finance
-app.get('/api/finance/overview', async (req, res) => {
+app.get('/api/finance/overview', verifyAdmin, async (req, res) => {
   try {
     const totalOrders = await prisma.order.count();
     const totalRevenue = await prisma.order.aggregate({
@@ -2414,7 +2481,7 @@ app.get('/api/finance/overview', async (req, res) => {
   }
 });
 
-app.get('/api/finance/transactions', async (req, res) => {
+app.get('/api/finance/transactions', verifyAdmin, async (req, res) => {
   try {
     const transactions = await prisma.transaction.findMany({
       orderBy: { createdAt: 'desc' },
@@ -3136,26 +3203,23 @@ app.post('/api/bookings', async (req, res) => {
       }
     }
     
-    // 使用事务处理预订和库存
+    // 使用事务 + 原子 SQL 防止并发超售（核心安全保障）
+    // 使用 Serializable 隔离级别 + 原子 UPDATE WHERE 确保库存不被超卖
     const result = await prisma.$transaction(async (tx) => {
-      // 检查并锁定库存
+      // 对每个日期执行原子 SQL 更新：只有 booked_stock < total_stock 时才成功
       for (const date of dates) {
-        const stock = await tx.houseStock.findUnique({
-          where: { houseId_date: { houseId: homestayId, date } },
-        });
+        const updated = await tx.$executeRaw`
+          UPDATE "house_stocks"
+          SET "booked_stock" = "booked_stock" + 1
+          WHERE "house_id" = ${homestayId}
+            AND "date" = ${date}
+            AND "booked_stock" < "total_stock"
+        `;
         
-        const available = stock ? stock.totalStock - stock.bookedStock : 0;
-        if (!stock || available < 1) {
+        if (updated === 0) {
+          // 没有行被更新 → 库存不足（原子检查失败，防止超售）
           throw new Error(`日期 ${date.toISOString().split('T')[0]} 无可用房源`);
         }
-      }
-      
-      // 扣减库存（增加已预订数量）
-      for (const date of dates) {
-        await tx.houseStock.update({
-          where: { houseId_date: { houseId: homestayId, date } },
-          data: { bookedStock: { increment: 1 } },
-        });
       }
       
       // 获取业务配置，决定订单状态
@@ -3184,7 +3248,7 @@ app.post('/api/bookings', async (req, res) => {
       });
       
       return { order, needManualConfirm };
-    });
+    }, { isolationLevel: 'Serializable' });
     
     // 清除缓存
     cache.del('homestays:all');
@@ -5057,8 +5121,8 @@ function getDateRange(startDate, endDate) {
   return { start, end };
 }
 
-// GET /api/reports/overview - 综合报表概览
-app.get('/api/reports/overview', async (req, res) => {
+// GET /api/reports/overview - 综合报表概览（管理员）
+app.get('/api/reports/overview', verifyAdmin, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate, endDate);
@@ -5170,8 +5234,8 @@ app.get('/api/reports/overview', async (req, res) => {
   }
 });
 
-// GET /api/reports/revenue - 收入报表（按日期趋势）
-app.get('/api/reports/revenue', async (req, res) => {
+// GET /api/reports/revenue - 收入报表（按日期趋势）（管理员）
+app.get('/api/reports/revenue', verifyAdmin, async (req, res) => {
   try {
     const { startDate, endDate, groupBy = 'day' } = req.query;
     const { start, end } = getDateRange(startDate, endDate);
@@ -5245,8 +5309,8 @@ app.get('/api/reports/revenue', async (req, res) => {
   }
 });
 
-// GET /api/reports/orders - 订单统计报表
-app.get('/api/reports/orders', async (req, res) => {
+// GET /api/reports/orders - 订单统计报表（管理员）
+app.get('/api/reports/orders', verifyAdmin, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate, endDate);
@@ -5318,8 +5382,8 @@ app.get('/api/reports/orders', async (req, res) => {
   }
 });
 
-// GET /api/reports/users - 用户增长报表
-app.get('/api/reports/users', async (req, res) => {
+// GET /api/reports/users - 用户增长报表（管理员）
+app.get('/api/reports/users', verifyAdmin, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate, endDate);
@@ -5367,8 +5431,8 @@ app.get('/api/reports/users', async (req, res) => {
   }
 });
 
-// GET /api/reports/homestays - 房源报表（预订率、热门房源）
-app.get('/api/reports/homestays', async (req, res) => {
+// GET /api/reports/homestays - 房源报表（预订率、热门房源）（管理员）
+app.get('/api/reports/homestays', verifyAdmin, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate, endDate);

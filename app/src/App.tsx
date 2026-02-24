@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { LanguageProvider } from '@/hooks/useLanguage';
 import Navbar from '@/sections/Navbar';
-import CategoryFilter from '@/sections/CategoryFilter';
 import HomestayGrid from '@/sections/HomestayGrid';
 import SearchModal from '@/sections/SearchModal';
-import Footer from '@/sections/Footer';
 import TestPage from '@/pages/TestPage';
 import HomestayDetail from '@/pages/HomestayDetail';
+import CarDetail from '@/pages/CarDetail';
 import MealOrderPage from '@/pages/MealOrder';
 import CarRentalPage from '@/pages/CarRental';
 import TicketBookingPage from '@/pages/TicketBooking';
@@ -24,7 +23,6 @@ import { Button } from '@/components/ui/button';
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 function HomePage() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +33,7 @@ function HomePage() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await homestayApi.getAll({ category: selectedCategory === 'all' ? undefined : selectedCategory });
+        const response = await homestayApi.getAll();
         setHomestays(response.data);
       } catch (err: any) {
         console.error('Failed to fetch homestays:', err);
@@ -47,16 +45,11 @@ function HomePage() {
     };
 
     fetchHomestays();
-  }, [selectedCategory]);
-
-  const filteredHomestays = useMemo(() => {
-    if (selectedCategory === 'all') return homestays;
-    return homestays.filter((h) => h.type === selectedCategory);
-  }, [homestays, selectedCategory]);
+  }, []);
 
   if (error) {
     return (
-      <div className="min-h-screen pt-36">
+      <div className="min-h-screen pt-44">
         <Navbar onSearchClick={() => setIsSearchOpen(true)} />
         <div className="container-luxury py-20 flex flex-col items-center justify-center">
           <AlertCircle size={48} className="text-red-500 mb-4" />
@@ -65,7 +58,6 @@ function HomePage() {
             重试
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -73,19 +65,16 @@ function HomePage() {
   return (
     <>
       <Navbar onSearchClick={() => setIsSearchOpen(true)} />
-      <div className="pt-36">
-        <CategoryFilter selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
-        
+      <div className="pt-44">
         {isLoading ? (
           <div className="container-luxury py-20 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-champagne" />
           </div>
         ) : (
-          <HomestayGrid homestays={filteredHomestays} />
+          <HomestayGrid homestays={homestays} />
         )}
       </div>
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <Footer />
     </>
   );
 }
@@ -127,6 +116,9 @@ export default function App() {
       default:
         if (pathWithoutQuery.startsWith('/homestay/')) {
           return <HomestayDetail />;
+        }
+        if (pathWithoutQuery.startsWith('/car/')) {
+          return <CarDetail />;
         }
         return <HomePage />;
     }

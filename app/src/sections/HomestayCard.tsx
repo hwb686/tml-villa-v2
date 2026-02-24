@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { favoriteApi, type Homestay } from '@/services/api';
@@ -17,10 +17,14 @@ export default function HomestayCard({ homestay }: HomestayCardProps) {
   const [isFavorite, setIsFavorite] = useState(homestay.isFavorite);
   const [isToggling, setIsToggling] = useState(false);
 
+  useEffect(() => {
+    setIsFavorite(homestay.isFavorite);
+  }, [homestay.isFavorite]);
+
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       toast({
         title: '请先登录',
@@ -91,12 +95,6 @@ export default function HomestayCard({ homestay }: HomestayCardProps) {
           ))}
         </div>
 
-        {/* Superhost Badge */}
-        {homestay.host.isSuperhost && (
-          <Badge className="absolute top-3 left-3 bg-white/90 text-ink text-xs font-medium hover:bg-white">
-            {t.listing.superhost}
-          </Badge>
-        )}
       </div>
 
       {/* Content */}

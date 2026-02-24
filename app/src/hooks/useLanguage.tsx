@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { detectLanguage, getTranslations, type Language } from '@/lib/i18n';
 
+const LANGUAGE_STORAGE_KEY = 'tml-villa-language';
+
 interface LanguageContextType {
   lang: Language;
   t: ReturnType<typeof getTranslations>;
@@ -10,20 +12,26 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Language>('en');
+  const [lang, setLangState] = useState<Language>('en');
   const [t, setT] = useState(getTranslations('en'));
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const detectedLang = detectLanguage();
-    setLang(detectedLang);
-    setT(getTranslations(detectedLang));
+    const savedLang = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language | null;
+    const initialLang = savedLang || detectLanguage();
+    setLangState(initialLang);
+    setT(getTranslations(initialLang));
   }, []);
 
   useEffect(() => {
     if (isClient) setT(getTranslations(lang));
   }, [lang, isClient]);
+
+  const setLang = (newLang: Language) => {
+    setLangState(newLang);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang);
+  };
 
   return (
     <LanguageContext.Provider value={{ lang, t, setLang }}>

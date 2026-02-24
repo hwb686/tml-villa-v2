@@ -90,7 +90,7 @@ export function ReviewCard({ review, showHouse = false, onReply }: ReviewCardPro
           <div className="mt-3 p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center gap-2 text-sm font-medium text-blue-700">
               <MessageSquare className="h-4 w-4" />
-              <span>房东回复</span>
+              <span>回复</span>
               {review.replyAt && (
                 <span className="text-xs text-blue-500 ml-auto">
                   {formatDateStr(review.replyAt)}

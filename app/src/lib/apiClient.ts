@@ -43,8 +43,8 @@ class ApiClient {
       ...this.defaultHeaders,
       ...restConfig.headers,
       // 添加认证token
-      ...(localStorage.getItem('token') && {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      ...(localStorage.getItem('userToken') && {
+        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
       })
     };
 

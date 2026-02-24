@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { userApi } from '@/services/api';
 import Navbar from '@/sections/Navbar';
-import Footer from '@/sections/Footer';
 import { Mail, Lock, User, Phone, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -270,8 +269,6 @@ export default function LoginPage() {
           </Card>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }
