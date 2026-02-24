@@ -176,6 +176,19 @@ export default function LoginPage() {
                       {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       {t.auth.login}
                     </Button>
+                    <div className="text-center mt-3">
+                      <button
+                        type="button"
+                        className="text-sm text-champagne hover:underline"
+                        onClick={() => setError(
+                          lang === 'th' ? 'กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน' :
+                          lang === 'en' ? 'Please contact admin to reset your password' :
+                          '请联系管理员重置密码'
+                        )}
+                      >
+                        {lang === 'th' ? 'ลืมรหัสผ่าน?' : lang === 'en' ? 'Forgot password?' : '忘记密码？'}
+                      </button>
+                    </div>
                   </form>
                 </TabsContent>
 

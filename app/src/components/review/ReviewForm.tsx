@@ -125,7 +125,7 @@ export function ReviewForm({ open, onClose, onSuccess, booking }: ReviewFormProp
           {booking.homestay && (
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <img
-                src={booking.homestay.images?.[0] || '/images/placeholder.jpg'}
+                src={booking.homestay.images?.[0] || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%23f3f4f6"%3E%3Crect width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16"%3ENo Image%3C/text%3E%3C/svg%3E'}
                 alt={booking.homestay.title}
                 className="w-16 h-16 rounded object-cover"
               />

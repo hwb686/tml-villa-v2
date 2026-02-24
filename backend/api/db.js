@@ -74,11 +74,20 @@ const verifyAdmin = (req, res, next) => {
 
 const app = express();
 
-// CORS middleware
+// CORS middleware — 生产环境限制允许的来源
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  // 在生产环境仅允许白名单来源；本地开发或 Netlify 代理无 origin 时放行
+  if (!origin || ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes('*')) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 预检缓存 24h
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
@@ -86,6 +95,19 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// Cache-Control 中间件 — 只读 GET API 添加缓存头，减少重复请求
+const CACHE_TTL = parseInt(process.env.CACHE_TTL_SECONDS || '30', 10);
+app.use((req, res, next) => {
+  if (req.method === 'GET' && req.path.startsWith('/api/')) {
+    // 公开只读接口允许 CDN/浏览器缓存
+    const publicEndpoints = ['/api/homestays', '/api/categories', '/api/cars', '/api/car-configs', '/api/tickets'];
+    if (publicEndpoints.some(ep => req.path === ep || req.path.startsWith(ep + '/'))) {
+      res.setHeader('Cache-Control', `public, max-age=${CACHE_TTL}, stale-while-revalidate=${CACHE_TTL * 4}`);
+    }
+  }
+  next();
+});
 
 // Health check
 app.get('/health', (req, res) => {

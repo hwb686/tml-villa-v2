@@ -29,7 +29,17 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
       ...optionHeaders 
     }
   });
-  if (!response.ok) { throw new Error(`API Error: ${response.status} ${response.statusText}`); }
+  if (!response.ok) {
+    // 尝试解析后端返回的错误消息
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      if (errorBody.msg) errorMessage = errorBody.msg;
+      else if (errorBody.message) errorMessage = errorBody.message;
+      else if (errorBody.error) errorMessage = errorBody.error;
+    } catch { /* 忽略 JSON 解析失败 */ }
+    throw new Error(errorMessage);
+  }
   const backendResponse: BackendResponse<T> = await response.json();
   return { data: backendResponse.data, success: backendResponse.code === 200, message: backendResponse.msg };
 }

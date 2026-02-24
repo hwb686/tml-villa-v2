@@ -1,11 +1,12 @@
 [build]
-command = "cd app && npm install && npx vite build"
+# 使用 npm ci 保证依赖锁定一致性，构建速度更快
+command = "cd app && npm ci && npx vite build"
 publish = "app/dist"
 
 [build.environment]
 NODE_VERSION = "20"
-
-# Edge Functions for homepage (avoids Render cold start)
+# 环境变量建议在 Netlify 后台 Site settings > Environment variables 中配置
+# 以下仅作为 fallback（anon key 设计上可公开）
 VITE_SUPABASE_FUNCTIONS_URL = "https://tlorpxejqqmrdcfgvyhl.supabase.co/functions/v1"
 VITE_SUPABASE_URL = "https://tlorpxejqqmrdcfgvyhl.supabase.co"
 VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsb3JweGVqcXFtcmRjZmd2eWhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MjAwODksImV4cCI6MjA4Njk5NjA4OX0.5L5cR4G2D0xQz8d04eOREe5ud-AtSZqOaybfoROjGSw"

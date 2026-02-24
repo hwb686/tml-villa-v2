@@ -1,37 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Login from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import Users from '@/pages/Users';
-import Orders from '@/pages/Orders';
-import MealOrders from '@/pages/MealOrders';
-import MealConfigs from '@/pages/MealConfigs';
-import CarRentals from '@/pages/CarRentals';
-import CarConfigs from '@/pages/CarConfigs';
-import CarStockManagement from '@/pages/CarStockManagement';
-import Drivers from '@/pages/Drivers';
-import DriverSchedule from '@/pages/DriverSchedule';
-import Staffs from '@/pages/Staffs';
-import StaffSchedule from '@/pages/StaffSchedule';
-import TicketOrders from '@/pages/TicketOrders';
-import TicketConfigs from '@/pages/TicketConfigs';
-import StockManagement from '@/pages/StockManagement';
-import CalendarView from '@/pages/CalendarView';
-import UsageMonitor from '@/pages/UsageMonitor';
-import Coupons from '@/pages/Coupons';
-import Promotions from '@/pages/Promotions';
-import MemberLevels from '@/pages/MemberLevels';
-import Merchants from '@/pages/Merchants';
-
-import Finance from '@/pages/Finance';
-import Costs from '@/pages/Costs';
-import CostStats from '@/pages/CostStats';
-import Settings from '@/pages/Settings';
-import Categories from '@/pages/Categories';
-import HomestayManage from '@/pages/HomestayManage';
-import Reviews from '@/pages/Reviews';
 import { useAdminHashRouter } from '@/lib/router';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { Loader2 } from 'lucide-react';
+
+// React.lazy 代码分割 — 管理后台页面按需加载，减小首屏体积
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Users = lazy(() => import('@/pages/Users'));
+const Orders = lazy(() => import('@/pages/Orders'));
+const MealOrders = lazy(() => import('@/pages/MealOrders'));
+const MealConfigs = lazy(() => import('@/pages/MealConfigs'));
+const CarRentals = lazy(() => import('@/pages/CarRentals'));
+const CarConfigs = lazy(() => import('@/pages/CarConfigs'));
+const CarStockManagement = lazy(() => import('@/pages/CarStockManagement'));
+const Drivers = lazy(() => import('@/pages/Drivers'));
+const DriverSchedule = lazy(() => import('@/pages/DriverSchedule'));
+const Staffs = lazy(() => import('@/pages/Staffs'));
+const StaffSchedule = lazy(() => import('@/pages/StaffSchedule'));
+const TicketOrders = lazy(() => import('@/pages/TicketOrders'));
+const TicketConfigs = lazy(() => import('@/pages/TicketConfigs'));
+const StockManagement = lazy(() => import('@/pages/StockManagement'));
+const CalendarView = lazy(() => import('@/pages/CalendarView'));
+const UsageMonitor = lazy(() => import('@/pages/UsageMonitor'));
+const Coupons = lazy(() => import('@/pages/Coupons'));
+const Promotions = lazy(() => import('@/pages/Promotions'));
+const MemberLevels = lazy(() => import('@/pages/MemberLevels'));
+const Merchants = lazy(() => import('@/pages/Merchants'));
+const Finance = lazy(() => import('@/pages/Finance'));
+const Costs = lazy(() => import('@/pages/Costs'));
+const CostStats = lazy(() => import('@/pages/CostStats'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Categories = lazy(() => import('@/pages/Categories'));
+const HomestayManage = lazy(() => import('@/pages/HomestayManage'));
+const Reviews = lazy(() => import('@/pages/Reviews'));
+
+function LazyFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-champagne" />
+    </div>
+  );
+}
 
 export default function AdminApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -142,7 +152,9 @@ case 'car-rentals':
         onNavigate={navigate} 
         onLogout={handleLogout}
       >
-        {renderContent()}
+        <Suspense fallback={<LazyFallback />}>
+          {renderContent()}
+        </Suspense>
       </MainLayout>
     </ErrorBoundary>
   );

@@ -108,7 +108,7 @@ export default function UserCenter() {
       const token = localStorage.getItem('userToken');
       
       if (!token) {
-        window.location.hash = '/';
+        window.location.hash = '/login';
         return;
       }
 
@@ -855,7 +855,7 @@ export default function UserCenter() {
                       <a href={getHashLink(`/homestay/${favorite.homestay.id}`)}>
                         <div className="relative aspect-[4/3]">
                           <img
-                            src={favorite.homestay.images?.[0] || '/images/placeholder.jpg'}
+                            src={favorite.homestay.images?.[0] || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%23f3f4f6"%3E%3Crect width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16"%3ENo Image%3C/text%3E%3C/svg%3E'}
                             alt={favorite.homestay.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
