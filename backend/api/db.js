@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const cache = require('./cache');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 // JWT 密钥：生产环境必须在 Render 环境变量中设置 JWT_SECRET
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
@@ -15,12 +17,10 @@ const generateToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: JW
 
 /** 验证密码（兼容明文和 bcrypt 哈希两种格式） */
 const checkPassword = async (plain, stored) => {
-  // 如果已存储的是 bcrypt 哈希（以 $2 开头），用 bcrypt 比对
-  if (stored && stored.startsWith('$2')) {
-    return bcrypt.compare(plain, stored);
+  if (!stored || !stored.startsWith('$2')) {
+    return false;
   }
-  // 否则按明文比对（迁移期兼容）
-  return plain === stored;
+  return bcrypt.compare(plain, stored);
 };
 
 /** 哈希密码 */
@@ -95,6 +95,28 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// Security headers
+app.use(helmet());
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { code: 429, msg: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  message: { code: 429, msg: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', apiLimiter);
 
 // Cache-Control 中间件 — 只读 GET API 添加缓存头，减少重复请求
 const CACHE_TTL = parseInt(process.env.CACHE_TTL_SECONDS || '30', 10);
@@ -396,7 +418,8 @@ app.get('/api/homestays', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Error fetching homestays:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -470,7 +493,8 @@ app.get('/api/homestays/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching homestay:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -503,7 +527,8 @@ app.post('/api/homestays', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: 'success', data: homestay });
   } catch (err) {
     console.error('Error creating homestay:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -534,7 +559,8 @@ app.put('/api/homestays/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: 'success', data: homestay });
   } catch (err) {
     console.error('Error updating homestay:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -603,7 +629,8 @@ app.delete('/api/homestays/:id', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error deleting homestay:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -633,7 +660,8 @@ app.get('/api/categories', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Error fetching categories:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -657,11 +685,12 @@ app.get('/api/users', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching users:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
-app.get('/api/users/:id', verifyAdmin, async (req, res) => {
+app.get('/api/users/:id', authMiddleware, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
@@ -671,24 +700,34 @@ app.get('/api/users/:id', verifyAdmin, async (req, res) => {
       return res.status(404).json({ code: 404, msg: 'Not found' });
     }
     
+    delete user.password;
     res.json({ code: 200, data: user });
   } catch (err) {
     console.error('Error fetching user:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
-app.put('/api/users/:id', verifyAdmin, async (req, res) => {
+app.put('/api/users/:id', authMiddleware, async (req, res) => {
   try {
+    const { username, phone, avatar } = req.body;
+    const updateData = {};
+    if (username !== undefined) updateData.username = username;
+    if (phone !== undefined) updateData.phone = phone;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
     const user = await prisma.user.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: updateData,
     });
     
+    delete user.password;
     res.json({ code: 200, data: user });
   } catch (err) {
     console.error('Error updating user:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -696,10 +735,12 @@ app.get('/api/users/me', async (req, res) => {
   try {
     // In production, get user ID from JWT token
     const user = await prisma.user.findFirst();
+    if (user) delete user.password;
     res.json({ code: 200, data: user });
   } catch (err) {
     console.error('Error fetching current user:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -728,7 +769,8 @@ app.get('/api/orders', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching orders:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -758,7 +800,8 @@ app.get('/api/orders/:id', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -774,7 +817,8 @@ app.put('/api/orders/:id/status', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: 'success', data: order });
   } catch (err) {
     console.error('Error updating order status:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -794,7 +838,8 @@ app.get('/api/meal-configs', async (req, res) => {
     res.json({ code: 200, data: configs });
   } catch (err) {
     console.error('Error fetching meal configs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -816,7 +861,8 @@ app.post('/api/meal-configs', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: config });
   } catch (err) {
     console.error('Error creating meal config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -840,7 +886,8 @@ app.put('/api/meal-configs/:id', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: config });
   } catch (err) {
     console.error('Error updating meal config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -853,7 +900,8 @@ app.delete('/api/meal-configs/:id', async (req, res) => {
     res.json({ code: 200, msg: 'success' });
   } catch (err) {
     console.error('Error deleting meal config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -892,7 +940,8 @@ app.post('/api/meals', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: mealOrder });
   } catch (err) {
     console.error('Error creating meal order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -923,7 +972,8 @@ app.get('/api/meals/my', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching meal orders:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -954,7 +1004,8 @@ app.get('/api/meals', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching meal orders:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -985,7 +1036,8 @@ app.get('/api/meals/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching meal order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -999,7 +1051,8 @@ app.post('/api/meals/:id/cancel', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: mealOrder });
   } catch (err) {
     console.error('Error cancelling meal order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1015,7 +1068,8 @@ app.put('/api/meals/:id/status', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: mealOrder });
   } catch (err) {
     console.error('Error updating meal order status:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1035,7 +1089,8 @@ app.get('/api/ticket-configs', async (req, res) => {
     res.json({ code: 200, data: configs });
   } catch (err) {
     console.error('Error fetching ticket configs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1057,7 +1112,8 @@ app.post('/api/ticket-configs', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: config });
   } catch (err) {
     console.error('Error creating ticket config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1081,7 +1137,8 @@ app.put('/api/ticket-configs/:id', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: config });
   } catch (err) {
     console.error('Error updating ticket config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1094,7 +1151,8 @@ app.delete('/api/ticket-configs/:id', async (req, res) => {
     res.json({ code: 200, msg: 'success' });
   } catch (err) {
     console.error('Error deleting ticket config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1132,7 +1190,8 @@ app.post('/api/tickets', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: ticketOrder });
   } catch (err) {
     console.error('Error creating ticket order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1163,7 +1222,8 @@ app.get('/api/tickets/my', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching ticket orders:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1194,7 +1254,8 @@ app.get('/api/tickets', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching ticket orders:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1225,7 +1286,8 @@ app.get('/api/tickets/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching ticket order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1239,7 +1301,8 @@ app.post('/api/tickets/:id/cancel', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: ticketOrder });
   } catch (err) {
     console.error('Error cancelling ticket order:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1255,7 +1318,8 @@ app.put('/api/tickets/:id/status', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: ticketOrder });
   } catch (err) {
     console.error('Error updating ticket order status:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1275,7 +1339,8 @@ app.get('/api/car-configs', async (req, res) => {
     res.json({ code: 200, data: configs });
   } catch (err) {
     console.error('Error fetching car configs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1298,7 +1363,8 @@ app.post('/api/car-configs', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: config });
   } catch (err) {
     console.error('Error creating car config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1323,7 +1389,8 @@ app.put('/api/car-configs/:id', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: config });
   } catch (err) {
     console.error('Error updating car config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1336,7 +1403,8 @@ app.delete('/api/car-configs/:id', async (req, res) => {
     res.json({ code: 200, msg: 'success' });
   } catch (err) {
     console.error('Error deleting car config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1376,7 +1444,8 @@ app.post('/api/car-rentals', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: carRental });
   } catch (err) {
     console.error('Error creating car rental:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1409,7 +1478,8 @@ app.get('/api/car-rentals/my', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching car rentals:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1442,7 +1512,8 @@ app.get('/api/car-rentals', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching car rentals:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1474,7 +1545,8 @@ app.get('/api/car-rentals/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching car rental:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1488,7 +1560,8 @@ app.post('/api/car-rentals/:id/cancel', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: carRental });
   } catch (err) {
     console.error('Error cancelling car rental:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1504,7 +1577,8 @@ app.put('/api/car-rentals/:id/status', async (req, res) => {
     res.json({ code: 200, msg: 'success', data: carRental });
   } catch (err) {
     console.error('Error updating car rental status:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1555,7 +1629,8 @@ app.get('/api/car-configs/:id/stock', async (req, res) => {
     res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching car stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1609,7 +1684,8 @@ app.post('/api/car-configs/:id/init-stock', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error initializing car stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1671,7 +1747,8 @@ app.put('/api/car-configs/:id/stock/:date', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating car stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1716,7 +1793,8 @@ app.post('/api/car-configs/:id/batch-stock', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error batch updating car stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1755,7 +1833,8 @@ app.get('/api/car-configs/:id/unavailable-dates', async (req, res) => {
     res.json({ code: 200, data: unavailableDates });
   } catch (err) {
     console.error('Error fetching unavailable dates:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1780,7 +1859,8 @@ app.delete('/api/car-configs/:id/stock/cleanup', verifyAdmin, async (req, res) =
     });
   } catch (err) {
     console.error('Error cleaning up car stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1815,7 +1895,8 @@ app.get('/api/drivers', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching drivers:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1846,7 +1927,8 @@ app.get('/api/drivers/:id', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching driver:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1874,7 +1956,8 @@ app.post('/api/drivers', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '创建成功', data: driver });
   } catch (err) {
     console.error('Error creating driver:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1899,7 +1982,8 @@ app.put('/api/drivers/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '更新成功', data: driver });
   } catch (err) {
     console.error('Error updating driver:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1913,7 +1997,8 @@ app.delete('/api/drivers/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '删除成功' });
   } catch (err) {
     console.error('Error deleting driver:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -1965,7 +2050,8 @@ app.get('/api/drivers/:id/schedule', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching driver schedule:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2009,7 +2095,8 @@ app.post('/api/drivers/:id/schedule', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error setting driver schedule:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2065,7 +2152,8 @@ app.get('/api/driver-schedules/available', async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching available drivers:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2168,7 +2256,8 @@ app.get('/api/driver-schedules/calendar', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: calendar });
   } catch (err) {
     console.error('Error fetching driver calendar:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2229,7 +2318,8 @@ app.get('/api/staffs', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching staffs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2294,7 +2384,8 @@ app.get('/api/staffs/:id', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching staff:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2342,7 +2433,8 @@ app.post('/api/staffs', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '创建成功', data: staff });
   } catch (err) {
     console.error('Error creating staff:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2389,7 +2481,8 @@ app.put('/api/staffs/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '更新成功', data: staff });
   } catch (err) {
     console.error('Error updating staff:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2408,7 +2501,8 @@ app.delete('/api/staffs/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '删除成功' });
   } catch (err) {
     console.error('Error deleting staff:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2457,7 +2551,8 @@ app.get('/api/staffs/:id/schedule', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching staff schedule:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2515,7 +2610,8 @@ app.post('/api/staffs/:id/schedule', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error setting staff schedule:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2593,7 +2689,8 @@ app.get('/api/staff-schedules/calendar', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: calendar });
   } catch (err) {
     console.error('Error fetching staff calendar:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2616,7 +2713,8 @@ app.get('/api/finance/overview', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching finance overview:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2637,12 +2735,13 @@ app.get('/api/finance/transactions', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching transactions:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
 // Auth - User Register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   try {
     const { username, email, password, phone } = req.body;
 
@@ -2702,12 +2801,13 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (err) {
     console.error('Error registering user:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
 // Auth - User Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -2743,7 +2843,8 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Error logging in:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2758,7 +2859,8 @@ app.post('/api/auth/logout', async (req, res) => {
     });
   } catch (err) {
     console.error('Error logging out:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2800,7 +2902,8 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching current user:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2860,7 +2963,8 @@ app.put('/api/user/profile', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating user profile:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2900,7 +3004,8 @@ app.put('/api/user/password', authMiddleware, async (req, res) => {
     res.json({ code: 200, msg: '密码修改成功' });
   } catch (err) {
     console.error('Error changing password:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2956,7 +3061,8 @@ app.get('/api/favorites', authMiddleware, async (req, res) => {
     res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching favorites:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -2999,7 +3105,8 @@ app.post('/api/favorites', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error adding favorite:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3024,7 +3131,8 @@ app.delete('/api/favorites/:houseId', authMiddleware, async (req, res) => {
     res.json({ code: 200, msg: '取消收藏成功' });
   } catch (err) {
     console.error('Error removing favorite:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3064,7 +3172,8 @@ app.post('/api/favorites/toggle', authMiddleware, async (req, res) => {
     }
   } catch (err) {
     console.error('Error toggling favorite:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3103,7 +3212,8 @@ app.post('/api/admin/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Error logging in admin:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3133,7 +3243,8 @@ app.get('/api/config', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Error fetching configs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3153,7 +3264,8 @@ app.get('/api/config/:key', async (req, res) => {
     res.json({ code: 200, data: config });
   } catch (err) {
     console.error('Error fetching config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3186,7 +3298,8 @@ app.put('/api/config/:key', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '配置更新成功', data: config });
   } catch (err) {
     console.error('Error updating config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3221,7 +3334,8 @@ app.post('/api/config', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '配置创建成功', data: config });
   } catch (err) {
     console.error('Error creating config:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3243,7 +3357,8 @@ app.delete('/api/config/:key', verifyAdmin, async (req, res) => {
     if (err.code === 'P2025') {
       return res.status(404).json({ code: 404, msg: '配置项不存在' });
     }
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3411,9 +3526,10 @@ app.post('/api/bookings', async (req, res) => {
   } catch (err) {
     console.error('Error creating booking:', err);
     if (err.message.includes('无可用房源')) {
-      return res.status(400).json({ code: 400, msg: err.message });
+      return res.status(400).json({ code: 400, msg: '所选日期无可用房源' });
     }
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3447,7 +3563,8 @@ app.get('/api/bookings/my', authMiddleware, async (req, res) => {
     res.json({ code: 200, data: formatted });
   } catch (err) {
     console.error('Error fetching my bookings:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3494,7 +3611,8 @@ app.get('/api/bookings/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching booking:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3537,7 +3655,8 @@ app.put('/api/bookings/:id/confirm', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error confirming booking:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3602,7 +3721,8 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
     });
   } catch (err) {
     console.error('Error cancelling booking:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3651,7 +3771,8 @@ app.get('/api/homestays/:id/stock', async (req, res) => {
     res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3712,7 +3833,8 @@ app.post('/api/homestays/:id/init-stock', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error initializing stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3780,7 +3902,8 @@ app.put('/api/homestays/:id/stock/:date', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3828,7 +3951,8 @@ app.post('/api/homestays/:id/batch-stock', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error batch updating stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3877,7 +4001,8 @@ app.get('/api/homestays/:id/unavailable-dates', async (req, res) => {
     res.json({ code: 200, data: unavailableDates });
   } catch (err) {
     console.error('Error fetching unavailable dates:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -3902,12 +4027,13 @@ app.delete('/api/homestays/:id/stock/cleanup', verifyAdmin, async (req, res) => 
     });
   } catch (err) {
     console.error('Error cleaning up stock:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
 // Auth - Admin Change Password
-app.post('/api/admin/change-password', async (req, res) => {
+app.post('/api/admin/change-password', verifyAdmin, async (req, res) => {
   try {
     const { username, currentPassword, newPassword } = req.body;
     
@@ -3929,20 +4055,22 @@ app.post('/api/admin/change-password', async (req, res) => {
     }
     
     // 验证当前密码
-    if (admin.password !== currentPassword) {
+    const isValid = await bcrypt.compare(currentPassword, admin.password);
+    if (!isValid) {
       return res.status(401).json({ code: 401, msg: '当前密码错误' });
     }
     
     // 更新密码
     await prisma.admin.update({
       where: { username },
-      data: { password: newPassword },
+      data: { password: await hashPassword(newPassword) },
     });
     
     res.json({ code: 200, msg: '密码修改成功' });
   } catch (err) {
     console.error('Error changing password:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4069,7 +4197,8 @@ app.post('/api/seed', async (req, res) => {
     res.json({ code: 200, msg: 'Seed data created successfully' });
   } catch (err) {
     console.error('Error seeding data:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4179,7 +4308,8 @@ app.post('/api/seed', async (req, res) => {
      });
    } catch (err) {
      console.error('Error fetching reviews:', err);
-     res.status(500).json({ code: 500, msg: err.message });
+     console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
    }
  });
 
@@ -4247,7 +4377,8 @@ app.get('/api/reviews/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching review:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4350,7 +4481,8 @@ app.post('/api/reviews', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error creating review:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4425,7 +4557,8 @@ app.put('/api/reviews/:id', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating review:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4474,7 +4607,8 @@ app.delete('/api/reviews/:id', authMiddleware, async (req, res) => {
     res.json({ code: 200, msg: '评价已删除' });
   } catch (err) {
     console.error('Error deleting review:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4518,7 +4652,8 @@ app.post('/api/reviews/:id/reply', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error replying review:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4574,7 +4709,8 @@ app.put('/api/reviews/:id/status', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating review status:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4609,7 +4745,8 @@ app.get('/api/reviews/stats/:houseId', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching review stats:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4667,7 +4804,8 @@ app.get('/api/orders/completed', authMiddleware, async (req, res) => {
     res.json({ code: 200, data });
   } catch (err) {
     console.error('Error fetching completed orders:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4776,7 +4914,8 @@ app.get('/api/notifications', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching notifications:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4792,7 +4931,8 @@ app.get('/api/notifications/unread-count', authMiddleware, async (req, res) => {
     res.json({ code: 200, data: { count } });
   } catch (err) {
     console.error('Error fetching unread count:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4818,7 +4958,8 @@ app.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
     res.json({ code: 200, msg: '已标记为已读' });
   } catch (err) {
     console.error('Error marking notification as read:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4839,7 +4980,8 @@ app.put('/api/notifications/read-all', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error marking all notifications as read:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4864,7 +5006,8 @@ app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
     res.json({ code: 200, msg: '通知已删除' });
   } catch (err) {
     console.error('Error deleting notification:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4879,7 +5022,8 @@ app.delete('/api/notifications/cleanup', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error cleaning up notifications:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -4962,7 +5106,8 @@ app.get('/api/costs', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching costs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5081,7 +5226,8 @@ app.get('/api/costs/stats', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching cost stats:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5115,7 +5261,8 @@ app.get('/api/costs/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching cost:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5165,7 +5312,8 @@ app.post('/api/costs', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error creating cost:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5221,7 +5369,8 @@ app.put('/api/costs/:id', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating cost:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5243,7 +5392,8 @@ app.delete('/api/costs/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '成本记录已删除' });
   } catch (err) {
     console.error('Error deleting cost:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5369,7 +5519,8 @@ app.get('/api/reports/overview', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching report overview:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5444,7 +5595,8 @@ app.get('/api/reports/revenue', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching revenue report:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5517,7 +5669,8 @@ app.get('/api/reports/orders', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching orders report:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5566,7 +5719,8 @@ app.get('/api/reports/users', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching users report:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5629,7 +5783,8 @@ app.get('/api/reports/homestays', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching homestays report:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5722,7 +5877,8 @@ app.get('/api/calendar/rooms', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching room calendar:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5814,7 +5970,8 @@ app.get('/api/calendar/cars', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching car calendar:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5927,7 +6084,8 @@ app.get('/api/calendar/detail', verifyAdmin, async (req, res) => {
     }
   } catch (err) {
     console.error('Error fetching calendar detail:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5971,7 +6129,8 @@ app.get('/api/usage/limits', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: limits });
   } catch (err) {
     console.error('Error fetching usage limits:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -5989,7 +6148,8 @@ app.put('/api/usage/limits/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: updated, msg: '限额配置已更新' });
   } catch (err) {
     console.error('Error updating usage limit:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6031,7 +6191,8 @@ app.get('/api/usage/logs', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching usage logs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6086,7 +6247,8 @@ app.post('/api/usage/logs', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: log, msg: '使用量已记录' });
   } catch (err) {
     console.error('Error creating usage log:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6175,7 +6337,8 @@ app.get('/api/usage/status', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching usage status:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6216,7 +6379,8 @@ app.get('/api/usage/alerts', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: alerts });
   } catch (err) {
     console.error('Error fetching usage alerts:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6237,7 +6401,8 @@ app.delete('/api/usage/logs/cleanup', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error cleaning up usage logs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6280,7 +6445,8 @@ app.post('/api/usage/simulate', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error simulating usage data:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6310,7 +6476,8 @@ app.get('/api/coupons', async (req, res) => {
     res.json({ code: 200, data: { list, total, page: parseInt(page), pageSize: parseInt(pageSize) } });
   } catch (err) {
     console.error('Error fetching coupons:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6329,7 +6496,8 @@ app.get('/api/coupons/:id', async (req, res) => {
     res.json({ code: 200, data: coupon });
   } catch (err) {
     console.error('Error fetching coupon:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6379,7 +6547,8 @@ app.post('/api/coupons', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: coupon, msg: '优惠券创建成功' });
   } catch (err) {
     console.error('Error creating coupon:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6400,7 +6569,8 @@ app.put('/api/coupons/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: coupon, msg: '优惠券更新成功' });
   } catch (err) {
     console.error('Error updating coupon:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6411,7 +6581,8 @@ app.delete('/api/coupons/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '优惠券删除成功' });
   } catch (err) {
     console.error('Error deleting coupon:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6486,7 +6657,8 @@ app.post('/api/coupons/validate', async (req, res) => {
     });
   } catch (err) {
     console.error('Error validating coupon:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6551,7 +6723,8 @@ app.post('/api/coupons/use', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error using coupon:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6615,7 +6788,8 @@ app.get('/api/coupons/user/available', authMiddleware, async (req, res) => {
     res.json({ code: 200, data: availableCoupons });
   } catch (err) {
     console.error('Error fetching user available coupons:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6641,7 +6815,8 @@ app.get('/api/promotions', async (req, res) => {
     res.json({ code: 200, data: { list, total, page: parseInt(page), pageSize: parseInt(pageSize) } });
   } catch (err) {
     console.error('Error fetching promotions:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6672,7 +6847,8 @@ app.get('/api/promotions/active', async (req, res) => {
     res.json({ code: 200, data: list });
   } catch (err) {
     console.error('Error fetching active promotions:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6690,7 +6866,8 @@ app.get('/api/promotions/:id', async (req, res) => {
     res.json({ code: 200, data: promotion });
   } catch (err) {
     console.error('Error fetching promotion:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6730,7 +6907,8 @@ app.post('/api/promotions', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: promotion, msg: '促销活动创建成功' });
   } catch (err) {
     console.error('Error creating promotion:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6751,7 +6929,8 @@ app.put('/api/promotions/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: promotion, msg: '促销活动更新成功' });
   } catch (err) {
     console.error('Error updating promotion:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6762,7 +6941,8 @@ app.delete('/api/promotions/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, msg: '促销活动删除成功' });
   } catch (err) {
     console.error('Error deleting promotion:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6811,7 +6991,8 @@ app.get('/api/promotions/check/:itemId', async (req, res) => {
     res.json({ code: 200, data: result });
   } catch (err) {
     console.error('Error checking promotions:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6863,7 +7044,8 @@ app.get('/api/membership/levels', async (req, res) => {
     res.json({ code: 200, data: levels });
   } catch (err) {
     console.error('Error fetching membership levels:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6906,7 +7088,8 @@ app.get('/api/membership/my', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching membership info:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -6940,7 +7123,8 @@ app.get('/api/membership/points', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching point logs:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7009,7 +7193,8 @@ app.post('/api/membership/points/earn', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error earning points:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7070,7 +7255,8 @@ app.post('/api/membership/points/consume', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Error consuming points:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7130,7 +7316,8 @@ app.post('/api/membership/points/admin-adjust', verifyAdmin, async (req, res) =>
     });
   } catch (err) {
     console.error('Error adjusting points:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7154,7 +7341,8 @@ app.get('/api/admin/membership/levels', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: levelsWithCount });
   } catch (err) {
     console.error('Error fetching admin membership levels:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7177,7 +7365,8 @@ app.put('/api/admin/membership/levels/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: level, msg: '等级配置更新成功' });
   } catch (err) {
     console.error('Error updating membership level:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7215,7 +7404,8 @@ app.post('/api/admin/membership/levels', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: level, msg: '等级创建成功' });
   } catch (err) {
     console.error('Error creating membership level:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7241,7 +7431,8 @@ app.delete('/api/admin/membership/levels/:id', verifyAdmin, async (req, res) => 
     res.json({ code: 200, msg: '等级删除成功' });
   } catch (err) {
     console.error('Error deleting membership level:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7293,7 +7484,8 @@ app.get('/api/admin/membership/users', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching membership users:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7385,7 +7577,8 @@ app.post('/api/merchants/apply', authMiddleware, async (req, res) => {
     res.json({ code: 200, data: merchant, msg: '商家入驻申请已提交，请等待审核' });
   } catch (err) {
     console.error('Error applying merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7408,7 +7601,8 @@ app.get('/api/merchants/my', authMiddleware, async (req, res) => {
     res.json({ code: 200, data: merchant });
   } catch (err) {
     console.error('Error fetching merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7435,7 +7629,8 @@ app.put('/api/merchants/my', authMiddleware, async (req, res) => {
     res.json({ code: 200, data: updatedMerchant, msg: '商家信息更新成功' });
   } catch (err) {
     console.error('Error updating merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7476,7 +7671,8 @@ app.get('/api/admin/merchants', verifyAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching merchants:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7497,7 +7693,8 @@ app.get('/api/admin/merchants/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: merchant });
   } catch (err) {
     console.error('Error fetching merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7517,7 +7714,8 @@ app.put('/api/admin/merchants/:id/approve', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: merchant, msg: '商家审核通过' });
   } catch (err) {
     console.error('Error approving merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7537,7 +7735,8 @@ app.put('/api/admin/merchants/:id/reject', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: merchant, msg: '商家审核已拒绝' });
   } catch (err) {
     console.error('Error rejecting merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7557,7 +7756,8 @@ app.put('/api/admin/merchants/:id/suspend', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: merchant, msg: '商家已暂停' });
   } catch (err) {
     console.error('Error suspending merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7574,7 +7774,8 @@ app.put('/api/admin/merchants/:id/restore', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: merchant, msg: '商家已恢复' });
   } catch (err) {
     console.error('Error restoring merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7591,7 +7792,8 @@ app.put('/api/admin/merchants/:id', verifyAdmin, async (req, res) => {
     res.json({ code: 200, data: merchant, msg: '商家信息更新成功' });
   } catch (err) {
     console.error('Error updating merchant:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 
@@ -7618,7 +7820,8 @@ app.get('/api/admin/merchants/stats/overview', verifyAdmin, async (req, res) => 
     });
   } catch (err) {
     console.error('Error fetching merchant stats:', err);
-    res.status(500).json({ code: 500, msg: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ code: 500, msg: '服务器内部错误' });
   }
 });
 

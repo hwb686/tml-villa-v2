@@ -29,15 +29,28 @@ logs/
 *.log
 npm-debug.log*
 
-# Prisma
-backend/prisma/migrations/
+# Prisma (keep migrations/ tracked - required for prisma migrate deploy)
 backend/prisma/*.db
 backend/prisma/*.db-journal
 
 # Testing
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+screenshots/
 
-# Temporary files
+# Dev artifacts
 *.tmp
 *.temp
+*.sh.backup
+opencode-progress.txt
+EOF
+fix-calendar.js
+
+# Screenshots (root level dev artifacts)
+/bug-*.png
+/test-*.png
+
+# Process files
+pids/

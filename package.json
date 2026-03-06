@@ -1,11 +1,24 @@
 {
-  "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@vitejs/plugin-react": "^5.1.4",
-    "vite": "^7.3.1"
+  "name": "tml-villa",
+  "version": "1.0.0",
+  "description": "TML Villa - 泰国民宿管理平台（民宿、租车、订餐、票务）",
+  "private": true,
+  "scripts": {
+    "dev": "bash init.sh",
+    "dev:frontend": "cd app && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "cd app && npm ci && npx vite build",
+    "test": "cd app && npx vitest run",
+    "test:backend": "cd backend && npm test",
+    "test:e2e": "npx playwright test",
+    "lint": "cd app && npm run lint",
+    "db:generate": "cd backend && npx prisma generate",
+    "db:migrate": "cd backend && npx prisma migrate deploy",
+    "db:seed": "cd backend && npx prisma db seed",
+    "db:studio": "cd backend && npx prisma studio",
+    "stop": "bash stop.sh"
   },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^3.5.0"
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }
