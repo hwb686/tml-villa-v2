@@ -169,20 +169,20 @@ export default function UserCenter() {
       });
       setUser(res.data);
       setEditDialogOpen(false);
-      setMessage({ type: 'success', text: '个人信息更新成功' });
+        setMessage({ type: 'success', text: t.userCenter.updateSuccess });
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : '更新失败' });
+        setMessage({ type: 'error', text: err instanceof Error ? err.message : t.userCenter.updateFailed });
     }
   };
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setMessage({ type: 'error', text: '两次输入的密码不一致' });
+        setMessage({ type: 'error', text: t.userCenter.passwordMismatch });
       return;
     }
 
     if (passwordForm.newPassword.length < 6) {
-      setMessage({ type: 'error', text: '密码长度不能少于6位' });
+        setMessage({ type: 'error', text: t.userCenter.passwordTooShort });
       return;
     }
 
@@ -191,9 +191,9 @@ export default function UserCenter() {
       await userApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
       setPasswordDialogOpen(false);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setMessage({ type: 'success', text: '密码修改成功' });
+        setMessage({ type: 'success', text: t.userCenter.passwordChangeSuccess });
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : '密码修改失败' });
+        setMessage({ type: 'error', text: err instanceof Error ? err.message : t.userCenter.passwordChangeFailed });
     }
   };
 
@@ -203,12 +203,12 @@ export default function UserCenter() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; className: string }> = {
-      pending: { label: '待确认', className: 'bg-yellow-100 text-yellow-800' },
-      confirmed: { label: '已确认', className: 'bg-blue-100 text-blue-800' },
-      completed: { label: '已完成', className: 'bg-green-100 text-green-800' },
-      cancelled: { label: '已取消', className: 'bg-gray-100 text-gray-800' },
-    };
+  const statusMap: Record<string, { label: string; className: string }> = {
+    pending: { label: t.userCenter.status.pending, className: 'bg-yellow-100 text-yellow-800' },
+    confirmed: { label: t.userCenter.status.confirmed, className: 'bg-blue-100 text-blue-800' },
+    completed: { label: t.userCenter.status.completed, className: 'bg-green-100 text-green-800' },
+    cancelled: { label: t.userCenter.status.cancelled, className: 'bg-gray-100 text-gray-800' },
+  };
     const config = statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
@@ -262,28 +262,28 @@ export default function UserCenter() {
                   <p className="text-gray-500 mt-1">{user.email}</p>
                   {user.phone && <p className="text-gray-500 text-sm">{user.phone}</p>}
                   <div className="flex items-center gap-4 mt-3">
-                    <span className="text-sm text-gray-400">
-                      <Calendar className="inline h-4 w-4 mr-1" />
-                      注册于 {formatDate(user.createdAt)}
-                    </span>
+        <span className="text-sm text-gray-400">
+          <Calendar className="inline h-4 w-4 mr-1" />
+          {t.userCenter.registeredAt} {formatDate(user.createdAt)}
+        </span>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
                   <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        编辑资料
-                      </Button>
+        <Button variant="outline" size="sm">
+          <Edit2 className="h-4 w-4 mr-2" />
+          {t.userCenter.editProfile}
+        </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>编辑个人资料</DialogTitle>
+                        <DialogTitle>{t.userCenter.editProfile}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 pt-4">
                         <div>
-                          <Label htmlFor="username">用户名</Label>
+                          <Label htmlFor="username">{t.userCenter.username}</Label>
                           <Input
                             id="username"
                             value={editForm.username}
@@ -291,66 +291,66 @@ export default function UserCenter() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="phone">手机号</Label>
+                          <Label htmlFor="phone">{t.userCenter.phone}</Label>
                           <Input
                             id="phone"
                             value={editForm.phone}
                             onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                           />
                         </div>
-                        <Button onClick={handleUpdateProfile} className="w-full">保存</Button>
+                        <Button onClick={handleUpdateProfile} className="w-full">{t.userCenter.save}</Button>
                       </div>
                     </DialogContent>
                   </Dialog>
 
                   <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Lock className="h-4 w-4 mr-2" />
-                        修改密码
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>修改密码</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 pt-4">
-                        <div>
-                          <Label htmlFor="currentPassword">当前密码</Label>
-                          <Input
-                            id="currentPassword"
-                            type="password"
-                            value={passwordForm.currentPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="newPassword">新密码</Label>
-                          <Input
-                            id="newPassword"
-                            type="password"
-                            value={passwordForm.newPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="confirmPassword">确认新密码</Label>
-                          <Input
-                            id="confirmPassword"
-                            type="password"
-                            value={passwordForm.confirmPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                          />
-                        </div>
-                        <Button onClick={handleChangePassword} className="w-full">确认修改</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+        <Button variant="outline" size="sm">
+          <Lock className="h-4 w-4 mr-2" />
+          {t.userCenter.changePassword}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t.userCenter.changePassword}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div>
+            <Label htmlFor="currentPassword">{t.userCenter.currentPassword}</Label>
+            <Input
+              id="currentPassword"
+              type="password"
+              value={passwordForm.currentPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="newPassword">{t.userCenter.newPassword}</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirmPassword">{t.userCenter.confirmPassword}</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={passwordForm.confirmPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+            />
+          </div>
+          <Button onClick={handleChangePassword} className="w-full">{t.userCenter.confirm}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
 
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    退出登录
-                  </Button>
+    <Button variant="outline" size="sm" onClick={handleLogout}>
+      <LogOut className="h-4 w-4 mr-2" />
+      {t.userCenter.logout}
+    </Button>
                 </div>
               </div>
             </CardContent>

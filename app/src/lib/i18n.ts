@@ -100,7 +100,30 @@ const translations = {
       noReviews: 'ยังไม่มีรีวิว',
       noNotifications: 'ยังไม่มีการแจ้งเตือน',
       markAsRead: 'ทำเครื่องหมายว่าอ่านแล้ว',
-      deleteAll: 'ลบทั้งหมด'
+      deleteAll: 'ลบทั้งหมด',
+      updateSuccess: 'บันทึกข้อมูลสำเร็จ',
+      updateFailed: 'บันทึกข้อมูลไม่สำเร็จ',
+      passwordMismatch: 'รหัสผ่านไม่ตรงกัน',
+      passwordTooShort: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+      passwordChangeSuccess: 'เปลี่ยนรหัสผ่านสำเร็จ',
+      passwordChangeFailed: 'เปลี่ยนรหัสผ่านไม่สำเร็จ',
+      regularMember: 'สมาชิกทั่วไป',
+      allMarkedRead: 'ทำเครื่องหมายอ่านทั้งหมดแล้ว',
+      memberCenter: 'ศูนย์สมาชิก',
+      myOrders: 'คำสั่งซื้อของฉัน',
+      logout: 'ออกจากระบบ',
+      registeredAt: 'สมัครสมาชิกเมื่อ',
+      username: 'ชื่อผู้ใช้',
+      phone: 'โทรศัพท์',
+      currentPassword: 'รหัสผ่านปัจจุบัน',
+      newPassword: 'รหัสผ่านใหม่',
+      confirmPassword: 'ยืนยันรหัสผ่าน',
+      status: {
+        pending: 'รอการยืนยัน',
+        confirmed: 'ยืนยันแล้ว',
+        completed: 'เสร็จสิ้น',
+        cancelled: 'ยกเลิก'
+      }
     },
     // 搜索页面
     searchPage: {
@@ -364,7 +387,30 @@ const translations = {
       noReviews: 'No reviews yet',
       noNotifications: 'No notifications yet',
       markAsRead: 'Mark as read',
-      deleteAll: 'Delete all'
+      deleteAll: 'Delete all',
+      updateSuccess: 'Profile updated successfully',
+      updateFailed: 'Update failed',
+      passwordMismatch: 'Passwords do not match',
+      passwordTooShort: 'Password must be at least 6 characters',
+      passwordChangeSuccess: 'Password changed successfully',
+      passwordChangeFailed: 'Failed to change password',
+      regularMember: 'Regular Member',
+      allMarkedRead: 'All marked as read',
+      memberCenter: 'Member Center',
+      myOrders: 'My Orders',
+      logout: 'Logout',
+      registeredAt: 'Registered',
+      username: 'Username',
+      phone: 'Phone',
+      currentPassword: 'Current Password',
+      newPassword: 'New Password',
+      confirmPassword: 'Confirm Password',
+      status: {
+        pending: 'Pending',
+        confirmed: 'Confirmed',
+        completed: 'Completed',
+        cancelled: 'Cancelled'
+      }
     },
     // Search Page
     searchPage: {
@@ -628,7 +674,30 @@ const translations = {
       noReviews: '暂无评价',
       noNotifications: '暂无通知',
       markAsRead: '标记为已读',
-      deleteAll: '全部删除'
+      deleteAll: '全部删除',
+      updateSuccess: '个人信息更新成功',
+      updateFailed: '更新失败',
+      passwordMismatch: '两次输入的密码不一致',
+      passwordTooShort: '密码长度不能少于6位',
+      passwordChangeSuccess: '密码修改成功',
+      passwordChangeFailed: '密码修改失败',
+      regularMember: '普通会员',
+      allMarkedRead: '已标记全部已读',
+      memberCenter: '会员中心',
+      myOrders: '我的订单',
+      logout: '退出登录',
+      registeredAt: '注册于',
+      username: '用户名',
+      phone: '手机号',
+      currentPassword: '当前密码',
+      newPassword: '新密码',
+      confirmPassword: '确认新密码',
+      status: {
+        pending: '待确认',
+        confirmed: '已确认',
+        completed: '已完成',
+        cancelled: '已取消'
+      }
     },
     // 搜索页面
     searchPage: {
