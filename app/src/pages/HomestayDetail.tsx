@@ -119,8 +119,8 @@ export default function HomestayDetail() {
     const token = localStorage.getItem('token');
     if (!token) {
       toast({
-        title: lang === 'zh' ? '请先登录' : lang === 'th' ? 'กรุณาเข้าสู่ระบบ' : 'Please login',
-        description: lang === 'zh' ? '登录后即可收藏房源' : lang === 'th' ? 'เข้าสู่ระบบเพื่อบันทึกที่พัก' : 'Login to save your favorite',
+        title: t.homestayDetail.pleaseLogin,
+        description: t.homestayDetail.loginToFavorite,
       });
       window.location.hash = getHashLink('/login');
       return;
@@ -133,16 +133,14 @@ export default function HomestayDetail() {
       const response = await favoriteApi.toggle(homestay.id);
       setIsFavorite(response.data.isFavorite);
       toast({
-        title: response.data.isFavorite 
-          ? (lang === 'zh' ? '已收藏' : lang === 'th' ? 'บันทึกแล้ว' : 'Saved')
-          : (lang === 'zh' ? '已取消收藏' : lang === 'th' ? 'ยกเลิกแล้ว' : 'Removed'),
+        title: response.data.isFavorite ? t.homestayDetail.favorited : t.homestayDetail.unfavorited,
         duration: 1500,
       });
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
       toast({
-        title: lang === 'zh' ? '操作失败' : lang === 'th' ? 'เกิดข้อผิดพลาด' : 'Failed',
-        description: lang === 'zh' ? '请稍后重试' : lang === 'th' ? 'กรุณาลองอีกครั้ง' : 'Please try again',
+        title: t.homestayDetail.operationFailed,
+        description: t.homestayDetail.tryLater,
         variant: 'destructive',
       });
     } finally {
@@ -267,7 +265,7 @@ export default function HomestayDetail() {
 
   const handleBooking = () => {
     if (!checkIn || !checkOut) {
-      alert(lang === 'zh' ? '请选择入住和退房日期' : lang === 'th' ? 'กรุณาเลือกวันเช็คอินและเช็คเอาท์' : 'Please select check-in and check-out dates');
+      alert(t.homestayDetail.selectDates);
       return;
     }
     setBookingResult(null);
@@ -280,11 +278,11 @@ export default function HomestayDetail() {
     // 未登录用户需要填写联系方式
     if (!isLoggedIn) {
       if (!guestInfo.name || !guestInfo.phone) {
-        alert(lang === 'zh' ? '请填写姓名和联系电话' : lang === 'th' ? 'กรุณากรอกชื่อและเบอร์โทรศัพท์' : 'Please fill in your name and phone number');
+        alert(t.homestayDetail.fillNameAndPhone);
         return;
       }
       if (!guestInfo.email || !guestInfo.email.includes('@')) {
-        alert(lang === 'zh' ? '请填写有效的邮箱地址' : lang === 'th' ? 'กรุณากรอกอีเมลที่ถูกต้อง' : 'Please enter a valid email address');
+        alert(t.homestayDetail.validEmail);
         return;
       }
     }
@@ -318,13 +316,13 @@ export default function HomestayDetail() {
         setShowBookingModal(false);
         setShowResultModal(true);
       } else {
-        throw new Error(result.message || '预订失败');
+        throw new Error(result.message || 'Booking failed');
       }
     } catch (err) {
       console.error('Booking error:', err);
       setBookingResult({
         success: false,
-        message: err instanceof Error ? err.message : (lang === 'zh' ? '预订失败，请稍后重试' : lang === 'th' ? 'การจองล้มเหลว กรุณาลองใหม่' : 'Booking failed, please try again'),
+        message: err instanceof Error ? err.message : t.homestayDetail.bookingFailed,
       });
       setShowBookingModal(false);
       setShowResultModal(true);
@@ -529,7 +527,7 @@ export default function HomestayDetail() {
             {/* Amenities */}
             <div>
               <h2 className="text-xl font-semibold mb-3">
-                {lang === 'zh' ? '设施与服务' : lang === 'th' ? 'สิ่งอำนวยความสะดวก' : 'Amenities'}
+                {t.homestayDetail.whatThisPlaceOffers}
               </h2>
               <div className="grid grid-cols-2 gap-3">
                 {homestay.amenities.map((amenity, idx) => (
@@ -548,11 +546,11 @@ export default function HomestayDetail() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">
                   <Star size={20} className="inline-block mr-2 fill-yellow-400 text-yellow-400" />
-                  {lang === 'zh' ? '评价' : lang === 'th' ? 'รีวิว' : 'Reviews'}
+                  {t.homestayDetail.reviews}
                 </h2>
                 {reviewStats && (
                   <span className="text-gray-500 text-sm">
-                    {reviewStats.total} {lang === 'zh' ? '条评价' : lang === 'th' ? 'รีวิว' : 'reviews'}
+                    {reviewStats.total} {t.homestayDetail.reviewsCount}
                   </span>
                 )}
               </div>
@@ -578,7 +576,7 @@ export default function HomestayDetail() {
               {reviews.length >= 10 && (
                 <div className="mt-4 text-center">
                   <Button variant="outline">
-                    {lang === 'zh' ? '查看全部评价' : lang === 'th' ? 'ดูรีวิวทั้งหมด' : 'View all reviews'}
+                    {t.homestayDetail.seeAllReviews}
                   </Button>
                 </div>
               )}
@@ -668,7 +666,7 @@ export default function HomestayDetail() {
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold">
-                    <span>{lang === 'zh' ? '总计' : lang === 'th' ? 'รวม' : 'Total'}</span>
+<span>{t.homestayDetail.total}</span>
                     <span>{formatPrice(calculateTotal())}</span>
                   </div>
                 </div>
@@ -695,31 +693,31 @@ export default function HomestayDetail() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-semibold mb-4">
-              {lang === 'zh' ? '确认预订' : lang === 'th' ? 'ยืนยันการจอง' : 'Confirm Booking'}
+              {t.homestayDetail.confirmBooking}
             </h2>
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-600">{homestay.title}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">{lang === 'zh' ? '入住' : lang === 'th' ? 'เช็คอิน' : 'Check-in'}</span>
+                <span className="text-gray-600">{t.homestayDetail.checkIn}</span>
                 <span>{checkIn && format(checkIn, 'yyyy-MM-dd')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">{lang === 'zh' ? '退房' : lang === 'th' ? 'เช็คเอาท์' : 'Check-out'}</span>
+                <span className="text-gray-600">{t.homestayDetail.checkOut}</span>
                 <span>{checkOut && format(checkOut, 'yyyy-MM-dd')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">{lang === 'zh' ? '客人' : lang === 'th' ? 'ผู้เข้าพัก' : 'Guests'}</span>
+                <span className="text-gray-600">{t.homestayDetail.guests}</span>
                 <span>{guests}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">{lang === 'zh' ? '天数' : lang === 'th' ? 'คืน' : 'Nights'}</span>
+                <span className="text-gray-600">{t.homestayDetail.nights}</span>
                 <span>{calculateNights()}</span>
               </div>
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
-                <span>{lang === 'zh' ? '总计' : lang === 'th' ? 'รวม' : 'Total'}</span>
+                <span>{t.homestayDetail.total}</span>
                 <span className="text-champagne">{formatPrice(calculateTotal())}</span>
               </div>
             </div>
@@ -728,44 +726,42 @@ export default function HomestayDetail() {
             {!isLoggedIn && (
               <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-600 mb-2">
-                  {lang === 'zh' ? '请填写您的联系方式以便我们与您确认订单' : 
-                   lang === 'th' ? 'กรุณากรอกข้อมูลติดต่อของคุณ' : 
-                   'Please fill in your contact information'}
+{t.homestayDetail.fillContact}
                 </p>
                 <div>
                   <Label htmlFor="guestName">
-                    {lang === 'zh' ? '姓名 *' : lang === 'th' ? 'ชื่อ *' : 'Name *'}
+                    {t.homestayDetail.nameRequired}
                   </Label>
                   <Input
                     id="guestName"
                     value={guestInfo.name}
                     onChange={(e) => setGuestInfo({ ...guestInfo, name: e.target.value })}
-                    placeholder={lang === 'zh' ? '请输入您的姓名' : 'Enter your name'}
+                    placeholder={t.homestayDetail.enterName}
                     className="mt-1"
                   />
                 </div>
                 <div>
                   <Label htmlFor="guestPhone">
-                    {lang === 'zh' ? '联系电话 *' : lang === 'th' ? 'เบอร์โทรศัพท์ *' : 'Phone *'}
+                    {t.homestayDetail.phoneRequired}
                   </Label>
                   <Input
                     id="guestPhone"
                     value={guestInfo.phone}
                     onChange={(e) => setGuestInfo({ ...guestInfo, phone: e.target.value })}
-                    placeholder={lang === 'zh' ? '请输入联系电话' : 'Enter your phone'}
+                    placeholder={t.homestayDetail.enterPhone}
                     className="mt-1"
                   />
                 </div>
                 <div>
                   <Label htmlFor="guestEmail">
-                    {lang === 'zh' ? '邮箱 *' : lang === 'th' ? 'อีเมล *' : 'Email *'}
+                    {t.homestayDetail.emailRequired}
                   </Label>
                   <Input
                     id="guestEmail"
                     type="email"
                     value={guestInfo.email}
                     onChange={(e) => setGuestInfo({ ...guestInfo, email: e.target.value })}
-                    placeholder={lang === 'zh' ? '请输入邮箱地址' : 'Enter your email'}
+                    placeholder={t.homestayDetail.enterEmail}
                     className="mt-1"
                   />
                 </div>
@@ -775,13 +771,13 @@ export default function HomestayDetail() {
             {/* 备注 */}
             <div className="mb-6">
               <Label htmlFor="remark">
-                {lang === 'zh' ? '备注' : lang === 'th' ? 'หมายเหตุ' : 'Remark'}
+                {t.homestayDetail.notesLabel}
               </Label>
               <Textarea
                 id="remark"
                 value={guestInfo.remark}
                 onChange={(e) => setGuestInfo({ ...guestInfo, remark: e.target.value })}
-                placeholder={lang === 'zh' ? '如有特殊要求请在此说明' : 'Any special requests?'}
+                placeholder={t.homestayDetail.notesPlaceholder}
                 className="mt-1"
                 rows={2}
               />
@@ -794,7 +790,7 @@ export default function HomestayDetail() {
                 onClick={() => setShowBookingModal(false)}
                 disabled={isSubmitting}
               >
-                {lang === 'zh' ? '取消' : lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+                {t.homestayDetail.cancelBtn}
               </Button>
               <Button 
                 className="flex-1 bg-champagne hover:bg-champagne-dark"
@@ -804,10 +800,10 @@ export default function HomestayDetail() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {lang === 'zh' ? '提交中...' : 'Submitting...'}
+                    {t.homestayDetail.submitting}
                   </>
                 ) : (
-                  lang === 'zh' ? '确认预订' : lang === 'th' ? 'ยืนยัน' : 'Confirm'
+                  t.homestayDetail.confirmBooking
                 )}
               </Button>
             </div>
@@ -826,40 +822,40 @@ export default function HomestayDetail() {
                     <Check size={32} className="text-green-600" />
                   </div>
                   <h2 className="text-xl font-semibold mb-2">
-                    {lang === 'zh' ? '预订成功！' : lang === 'th' ? 'จองสำเร็จ!' : 'Booking Successful!'}
+                    {t.homestayDetail.bookingSuccess}
                   </h2>
                   <p className="text-gray-600 mb-4">
                     {bookingResult.message}
                   </p>
                   <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{lang === 'zh' ? '订单号' : 'Order ID'}</span>
+                      <span className="text-gray-500">{t.homestayDetail.orderId}</span>
                       <span className="font-mono font-medium">{bookingResult.orderId}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{lang === 'zh' ? '状态' : 'Status'}</span>
+                      <span className="text-gray-500">{t.homestayDetail.status}</span>
                       <Badge className={
                         bookingResult.status === 'confirmed' 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-yellow-100 text-yellow-800'
                       }>
-                        {bookingResult.status === 'confirmed'
-                          ? (lang === 'zh' ? '已确认' : 'Confirmed')
-                          : (lang === 'zh' ? '待确认' : 'Pending')
-                        }
+{bookingResult.status === 'confirmed'
+                  ? t.homestayDetail.confirmed
+                  : t.homestayDetail.pending
+                }
                       </Badge>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{lang === 'zh' ? '入住日期' : 'Check-in'}</span>
+                      <span className="text-gray-500">{t.homestayDetail.checkInDate}</span>
                       <span>{checkIn && format(checkIn, 'yyyy-MM-dd')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{lang === 'zh' ? '退房日期' : 'Check-out'}</span>
+                      <span className="text-gray-500">{t.homestayDetail.checkOutDate}</span>
                       <span>{checkOut && format(checkOut, 'yyyy-MM-dd')}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-semibold">
-                      <span>{lang === 'zh' ? '总价' : 'Total'}</span>
+                      <span>{t.homestayDetail.totalPrice}</span>
                       <span className="text-champagne">{formatPrice(calculateTotal())}</span>
                     </div>
                   </div>
@@ -870,10 +866,10 @@ export default function HomestayDetail() {
                     <span className="text-red-600 text-2xl">✕</span>
                   </div>
                   <h2 className="text-xl font-semibold mb-2">
-                    {lang === 'zh' ? '预订失败' : lang === 'th' ? 'การจองล้มเหลว' : 'Booking Failed'}
+                    {t.homestayDetail.bookingFailed}
                   </h2>
                   <p className="text-gray-600">
-                    {bookingResult?.message || (lang === 'zh' ? '请稍后重试' : 'Please try again later')}
+                    {bookingResult?.message || t.homestayDetail.tryAgainLater}
                   </p>
                 </>
               )}
@@ -888,7 +884,7 @@ export default function HomestayDetail() {
                 }
               }}
             >
-              {lang === 'zh' ? '确定' : lang === 'th' ? 'ตกลง' : 'OK'}
+              {t.homestayDetail.ok}
             </Button>
           </div>
         </div>

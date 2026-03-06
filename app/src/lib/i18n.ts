@@ -204,7 +204,15 @@ const translations = {
       validEmail: 'กรุณากรอกอีเมลที่ถูกต้อง',
       notChargedYet: 'คุณจะยังไม่ถูกหักเงิน',
       pending: 'รอการยืนยัน',
-      confirmed: 'ยืนยันแล้ว'
+      confirmed: 'ยืนยันแล้ว',
+      reviewsCount: 'รีวิว',
+      seeAllReviews: 'ดูรีวิวทั้งหมด',
+      orderId: 'หมายเลขคำสั่งซื้อ',
+      status: 'สถานะ',
+      checkInDate: 'วันเช็คอิน',
+      checkOutDate: 'วันเช็คเอาท์',
+      tryAgainLater: 'กรุณาลองใหม่ภายหลัง',
+      ok: 'ตกลง'
     },
     // 订单
     orders: {
@@ -519,7 +527,15 @@ const translations = {
       validEmail: 'Please enter a valid email address',
       notChargedYet: 'You won\'t be charged yet',
       pending: 'Pending',
-      confirmed: 'Confirmed'
+      confirmed: 'Confirmed',
+      reviewsCount: 'reviews',
+      seeAllReviews: 'See all reviews',
+      orderId: 'Order ID',
+      status: 'Status',
+      checkInDate: 'Check-in',
+      checkOutDate: 'Check-out',
+      tryAgainLater: 'Please try again later',
+      ok: 'OK'
     },
     // Orders
     orders: {
@@ -834,7 +850,15 @@ const translations = {
       validEmail: '请填写有效的邮箱地址',
       notChargedYet: '您暂时不会被收费',
       pending: '待确认',
-      confirmed: '已确认'
+      confirmed: '已确认',
+      reviewsCount: '条评价',
+      seeAllReviews: '查看全部评价',
+      orderId: '订单号',
+      status: '状态',
+      checkInDate: '入住日期',
+      checkOutDate: '退房日期',
+      tryAgainLater: '请稍后重试',
+      ok: '确定'
     },
     // 订单
     orders: {
