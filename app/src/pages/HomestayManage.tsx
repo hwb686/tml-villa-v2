@@ -24,9 +24,11 @@ export default function HomestayManage() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedHomestay, setSelectedHomestay] = useState<Homestay | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [formData, setFormData] = useState<CreateHomestayData>({
     title: '',
     location: '',
@@ -104,6 +106,7 @@ export default function HomestayManage() {
 
   const handleDelete = (homestay: Homestay) => {
     setSelectedHomestay(homestay);
+    setDeleteError('');
     setIsDeleteDialogOpen(true);
   };
 
@@ -205,6 +208,9 @@ export default function HomestayManage() {
 
   const handleConfirmDelete = async () => {
     if (!selectedHomestay) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+    
     try {
       // 先删除Supabase Storage中的图片
       if (selectedHomestay.images && selectedHomestay.images.length > 0) {
@@ -213,9 +219,12 @@ export default function HomestayManage() {
       // 再删除数据库记录
       await homestayApi.delete(selectedHomestay.id);
       setIsDeleteDialogOpen(false);
+      setDeleteLoading(false);
       fetchHomestays();
-    } catch (err) {
-      alert('删除失败');
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      setDeleteError(err.message || '删除失败，请重试');
+      setDeleteLoading(false);
     }
   };
 
@@ -517,20 +526,54 @@ export default function HomestayManage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteError('');
+          setDeleteLoading(false);
+        }
+        setIsDeleteDialogOpen(open);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>确认删除</DialogTitle>
-            <DialogDescription>
-              确定要删除这个民宿吗？此操作不可撤销。
+            <DialogDescription className="space-y-2">
+              <p>
+                确定要删除民宿「<strong>{selectedHomestay?.title}</strong>」吗？
+              </p>
+              <p className="text-sm text-gray-500">
+                此操作将删除该房源的所有数据（包括库存记录、收藏记录、评价记录），且不可撤销。
+              </p>
+              {selectedHomestay?.images && selectedHomestay.images.length > 0 && (
+                <p className="text-sm text-gray-500">
+                  将同时删除 {selectedHomestay.images.length} 张房源图片。
+                </p>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+          
+          {deleteError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+              <p className="text-sm text-red-600 flex items-start gap-2">
+                <span className="text-red-500">⚠️</span>
+                <span>{deleteError}</span>
+              </p>
+            </div>
+          )}
+          
+          <DialogFooter className="mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={deleteLoading}
+            >
               取消
             </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
-              删除
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? '删除中...' : '删除'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -102,9 +102,9 @@ export const homestayApi = {
     }
     return fetchApi<Homestay>(`/homestays/${id}`);
   },
-  create: (data: CreateHomestayData) => fetchApi<Homestay>('/homestays', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<CreateHomestayData>) => fetchApi<Homestay>(`/homestays/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string) => fetchApi<void>(`/homestays/${id}`, { method: 'DELETE' }),
+  create: (data: CreateHomestayData) => fetchAdminApi<Homestay>('/homestays', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<CreateHomestayData>) => fetchAdminApi<Homestay>(`/homestays/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => fetchAdminApi<void>(`/homestays/${id}`, { method: 'DELETE' }),
   toggleFavorite: (id: string) => fetchApi<{ isFavorite: boolean }>(`/homestays/${id}/favorite`, { method: 'POST' }),
 };
 

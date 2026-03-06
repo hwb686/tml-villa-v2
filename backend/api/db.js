@@ -539,13 +539,67 @@ app.put('/api/homestays/:id', verifyAdmin, async (req, res) => {
 
 app.delete('/api/homestays/:id', verifyAdmin, async (req, res) => {
   try {
-    await prisma.homestay.delete({
-      where: { id: req.params.id },
+    const homestayId = req.params.id;
+    
+    // 1. 检查关联订单状态
+    const activeOrders = await prisma.order.findMany({
+      where: {
+        houseId: homestayId,
+        type: 'homestay',
+        status: {
+          in: ['pending', 'confirmed']
+        }
+      },
+      select: {
+        orderId: true,
+        status: true
+      }
     });
     
+    // 2. 如果有未完成订单，拒绝删除
+    if (activeOrders.length > 0) {
+      const orderIds = activeOrders.map(o => o.orderId).join(', ');
+      return res.status(400).json({ 
+        code: 400, 
+        msg: `该房源有关联订单，无法删除。待处理订单号：${orderIds}`,
+        data: {
+          activeOrdersCount: activeOrders.length,
+          orderIds: activeOrders.map(o => o.orderId)
+        }
+      });
+    }
+    
+    // 3. 使用事务执行删除操作
+    await prisma.$transaction(async (tx) => {
+      // 3.1 删除房源库存记录
+      await tx.houseStock.deleteMany({
+        where: { houseId: homestayId }
+      });
+      
+      // 3.2 删除用户收藏记录
+      await tx.favorite.deleteMany({
+        where: { houseId: homestayId }
+      });
+      
+      // 3.3 删除评价记录（已完成/取消订单的评价）
+      await tx.review.deleteMany({
+        where: { houseId: homestayId }
+      });
+      
+      // 3.4 删除房源主体
+      await tx.homestay.delete({
+        where: { id: homestayId }
+      });
+    });
+    
+    // 4. 清除缓存
     cache.del('homestays:all');
 
-    res.json({ code: 200, msg: 'success' });
+    res.json({ 
+      code: 200, 
+      msg: 'success',
+      data: { deleted: true }
+    });
   } catch (err) {
     console.error('Error deleting homestay:', err);
     res.status(500).json({ code: 500, msg: err.message });
