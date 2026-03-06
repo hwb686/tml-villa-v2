@@ -54,9 +54,9 @@ export default function SearchResults() {
       
       const response = await homestayApi.getAll(params);
       setHomestays(response.data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Search failed:', err);
-      setError(err.message || '搜索失败');
+      setError(err instanceof Error ? err.message : '搜索失败');
       setHomestays([]);
     } finally {
       setIsLoading(false);

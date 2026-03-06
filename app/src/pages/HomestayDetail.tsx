@@ -320,11 +320,11 @@ export default function HomestayDetail() {
       } else {
         throw new Error(result.message || '预订失败');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Booking error:', err);
       setBookingResult({
         success: false,
-        message: err.message || (lang === 'zh' ? '预订失败，请稍后重试' : lang === 'th' ? 'การจองล้มเหลว กรุณาลองใหม่' : 'Booking failed, please try again'),
+        message: err instanceof Error ? err.message : (lang === 'zh' ? '预订失败，请稍后重试' : lang === 'th' ? 'การจองล้มเหลว กรุณาลองใหม่' : 'Booking failed, please try again'),
       });
       setShowBookingModal(false);
       setShowResultModal(true);

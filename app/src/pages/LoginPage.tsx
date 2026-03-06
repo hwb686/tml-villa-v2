@@ -75,8 +75,8 @@ export default function LoginPage() {
       const res = await userApi.login(loginForm.email, loginForm.password);
       localStorage.setItem('userToken', res.data.token);
       window.location.hash = '/user';
-    } catch (err: any) {
-      setError(err.message || getErrorMessage('loginFailed'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : getErrorMessage('loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -111,8 +111,8 @@ export default function LoginPage() {
       });
       localStorage.setItem('userToken', res.data.token);
       window.location.hash = '/user';
-    } catch (err: any) {
-      setError(err.message || getErrorMessage('registerFailed'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : getErrorMessage('registerFailed'));
     } finally {
       setLoading(false);
     }

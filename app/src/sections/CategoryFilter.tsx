@@ -48,7 +48,6 @@ export default function CategoryFilter({ selectedCategory, onSelectCategory }: C
         const response = await categoryApi.getAll();
         setCategories(response.data);
       } catch (err) {
-        console.log('API not available, using fallback categories');
         setCategories(fallbackCategories);
       } finally {
         setIsLoading(false);

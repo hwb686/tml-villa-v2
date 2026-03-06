@@ -132,7 +132,7 @@ export default function CarDetail() {
       });
       setBookingSuccess(true);
       setShowBookingResult(true);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Booking error:', err);
       setBookingSuccess(false);
       setShowBookingResult(true);

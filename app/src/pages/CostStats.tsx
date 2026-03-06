@@ -11,6 +11,16 @@ import {
 import { TrendingUp, TrendingDown, DollarSign, Percent, Calendar } from 'lucide-react';
 import { costApi, type CostStatsData, type CostByType, type CostMonthlyTrend } from '@/services/api';
 
+interface PieLabelProps {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+  name: string;
+}
+
 const COLORS = ['#1890ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#8c8c8c'];
 
 export default function CostStats() {
@@ -78,7 +88,7 @@ export default function CostStats() {
   })) || [];
 
   // 自定义饼图标签
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: PieLabelProps) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);

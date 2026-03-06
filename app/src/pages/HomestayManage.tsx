@@ -221,9 +221,9 @@ const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
       setIsDeleteDialogOpen(false);
       setDeleteLoading(false);
       fetchHomestays();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Delete error:', err);
-      setDeleteError(err.message || '删除失败，请重试');
+      setDeleteError(err instanceof Error ? err.message : '删除失败，请重试');
       setDeleteLoading(false);
     }
   };

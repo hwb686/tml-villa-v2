@@ -94,9 +94,9 @@ export function ReviewForm({ open, onClose, onSuccess, booking }: ReviewFormProp
       setRating(5);
       setContent('');
       setImages([]);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to submit review:', err);
-      setError(err.message || (lang === 'zh' ? '提交失败，请重试' : 'Failed to submit, please try again'));
+      setError(err instanceof Error ? err.message : (lang === 'zh' ? '提交失败，请重试' : 'Failed to submit, please try again'));
     } finally {
       setIsSubmitting(false);
     }

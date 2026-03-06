@@ -36,9 +36,9 @@ function HomePage() {
         setError(null);
         const response = await homestayApi.getAll();
         setHomestays(response.data);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to fetch homestays:', err);
-        setError(err.message || '加载失败');
+        setError(err instanceof Error ? err.message : '加载失败');
         setHomestays([]);
       } finally {
         setIsLoading(false);
@@ -82,11 +82,6 @@ function HomePage() {
 
 export default function App() {
   const { path } = useHashRouter(); // 修正为path
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('Current hash path:', path);
-  }, [path]);
 
   // Route mapping
   const renderRoute = () => {

@@ -165,8 +165,8 @@ export default function DriverSchedule() {
         };
       }
       setCalendarData(calendar);
-    } catch (err: any) {
-      setError(err.message || '设置失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '设置失败');
     } finally {
       setIsSaving(false);
     }

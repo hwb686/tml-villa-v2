@@ -127,8 +127,8 @@ export default function UsageMonitor() {
       setError(null);
       const response = await fetchAdminApi('/api/usage/status');
       setUsageData(response.data);
-    } catch (err: any) {
-      setError(err.message || '获取使用量状态失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '获取使用量状态失败');
     }
   };
 
@@ -152,8 +152,8 @@ export default function UsageMonitor() {
     try {
       await fetchAdminApi('/api/usage/simulate', { method: 'POST' });
       await handleRefresh();
-    } catch (err: any) {
-      setError(err.message || '模拟数据生成失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '模拟数据生成失败');
     }
     setSimulating(false);
   };
@@ -162,8 +162,8 @@ export default function UsageMonitor() {
     try {
       const result = await fetchAdminApi('/api/usage/logs/cleanup', { method: 'DELETE' });
       alert(result.msg || '清理完成');
-    } catch (err: any) {
-      setError(err.message || '清理失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '清理失败');
     }
   };
 

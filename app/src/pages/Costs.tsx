@@ -89,10 +89,19 @@ export default function Costs() {
   }, []);
 
   // 获取成本列表
+  interface CostParams {
+    page: number;
+    pageSize: number;
+    costType?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+
   const fetchCosts = async () => {
     try {
       setIsLoading(true);
-      const params: any = { page: pagination.page, pageSize: pagination.pageSize };
+      const params: CostParams = { page: pagination.page, pageSize: pagination.pageSize };
       if (filterCostType !== 'all') params.costType = filterCostType;
       if (filterStatus !== 'all') params.status = filterStatus;
       if (filterStartDate) params.startDate = filterStartDate;

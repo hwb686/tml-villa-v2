@@ -107,8 +107,8 @@ export default function Drivers() {
       }
       setIsDialogOpen(false);
       fetchDrivers();
-    } catch (err: any) {
-      setError(err.message || '操作失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '操作失败');
     } finally {
       setIsSaving(false);
     }
@@ -122,7 +122,7 @@ export default function Drivers() {
       await driverApi.delete(deletingDriver.id);
       setIsDeleteDialogOpen(false);
       fetchDrivers();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to delete driver:', err);
     } finally {
       setIsSaving(false);

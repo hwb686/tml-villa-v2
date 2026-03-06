@@ -124,42 +124,32 @@ export default function UserCenter() {
       try {
         const bookingsRes = await bookingApi.getMyBookings();
         setBookings(bookingsRes.data);
-      } catch (e) {
-        console.log('No bookings');
-      }
+      } catch (e) {}
 
       // 加载收藏
       try {
         const favoritesRes = await favoriteApi.getAll();
         setFavorites(favoritesRes.data);
-      } catch (e) {
-        console.log('No favorites');
-      }
+      } catch (e) {}
 
       // 加载用户评价
       try {
         const reviewsRes = await reviewApi.getAll({ pageSize: 20 });
         setReviews(reviewsRes.data.reviews);
-      } catch (e) {
-        console.log('No reviews');
-      }
+      } catch (e) {}
 
       // 加载通知
       try {
         const notificationsRes = await notificationApi.getAll({ limit: 50 });
         setNotifications(notificationsRes.data.list);
         setUnreadCount(notificationsRes.data.unreadCount);
-      } catch (e) {
-        console.log('No notifications');
-      }
+      } catch (e) {}
 
       // 加载会员信息
       try {
         const membershipRes = await membershipApi.getMyInfo();
         setMembershipInfo(membershipRes.data);
-      } catch (e) {
-        console.log('No membership info');
-      }
+      } catch (e) {}
 
      } catch (err) {
       console.error('Failed to load user data:', err);
@@ -180,8 +170,8 @@ export default function UserCenter() {
       setUser(res.data);
       setEditDialogOpen(false);
       setMessage({ type: 'success', text: '个人信息更新成功' });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '更新失败' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : '更新失败' });
     }
   };
 
@@ -202,8 +192,8 @@ export default function UserCenter() {
       setPasswordDialogOpen(false);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setMessage({ type: 'success', text: '密码修改成功' });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '密码修改失败' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : '密码修改失败' });
     }
   };
 

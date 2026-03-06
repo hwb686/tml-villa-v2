@@ -162,8 +162,8 @@ export default function StockManagement() {
       const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
       const response = await stockApi.get(selectedHomestayId, { month: monthStr });
       setStockData(response.data);
-    } catch (err: any) {
-      setError(err.message || '初始化失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '初始化失败');
     } finally {
       setSaving(false);
     }
@@ -197,8 +197,8 @@ export default function StockManagement() {
           price: price || null,
         },
       }));
-    } catch (err: any) {
-      setError(err.message || '更新失败');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '更新失败');
     } finally {
       setSaving(false);
     }
