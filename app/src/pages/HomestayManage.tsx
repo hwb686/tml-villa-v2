@@ -406,32 +406,64 @@ export default function HomestayManage() {
                 <Label>客人数量</Label>
                 <Input
                   type="number"
-                  value={formData.guests || ''}
-                  onChange={(e) => setFormData({ ...formData, guests: parseInt(e.target.value) || 2 })}
+                  value={formData.guests ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, guests: undefined });
+                    } else {
+                      const num = parseInt(value);
+                      setFormData({ ...formData, guests: isNaN(num) || num < 0 ? 0 : num });
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
                 <Label>卧室数量</Label>
                 <Input
                   type="number"
-                  value={formData.bedrooms || ''}
-                  onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) || 1 })}
+                  value={formData.bedrooms ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, bedrooms: undefined });
+                    } else {
+                      const num = parseInt(value);
+                      setFormData({ ...formData, bedrooms: isNaN(num) || num < 0 ? 0 : num });
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
                 <Label>床铺数量</Label>
                 <Input
                   type="number"
-                  value={formData.beds || ''}
-                  onChange={(e) => setFormData({ ...formData, beds: parseInt(e.target.value) || 1 })}
+                  value={formData.beds ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, beds: undefined });
+                    } else {
+                      const num = parseInt(value);
+                      setFormData({ ...formData, beds: isNaN(num) || num < 0 ? 0 : num });
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
                 <Label>浴室数量</Label>
                 <Input
                   type="number"
-                  value={formData.bathrooms || ''}
-                  onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) || 1 })}
+                  value={formData.bathrooms ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, bathrooms: undefined });
+                    } else {
+                      const num = parseInt(value);
+                      setFormData({ ...formData, bathrooms: isNaN(num) || num < 0 ? 0 : num });
+                    }
+                  }}
                 />
               </div>
             </div>

@@ -1,0 +1,127 @@
+{
+  "project_name": "TML Villa - BUG修复",
+  "description": "修复测试发现的三个BUG: 数字字段无法修改、搜索逻辑重构、房源删除功能",
+  "tech_stack": {
+    "frontend": "React + TypeScript + Vite",
+    "backend": "Node.js + Express + Prisma",
+    "database": "PostgreSQL (Supabase)"
+  },
+  "features": [
+    {
+      "id": "BUG-016",
+      "category": "bugfix",
+      "priority": "P0",
+      "title": "修复房源数字字段无法修改问题",
+      "description": "管理后台添加房源时，客人数量、卧室数量、床铺数量和浴室数量无法修改（输入0或清空会恢复默认值）",
+      "root_cause": "HomestayManage.tsx 使用 parseInt(e.target.value) || defaultValue 逻辑，导致空字符串或0被转换为默认值",
+      "fix_location": [
+        "app/src/pages/HomestayManage.tsx:407-436",
+        "backend/api/db.js:426-429 (后端也使用类似逻辑)"
+      ],
+      "steps": [
+        "修改前端数字输入处理逻辑，允许空值和0",
+        "后端API正确处理空值，使用数据库默认值",
+        "验证边界值: -1, 0, 1, 999, 空字符串",
+        "端到端测试：创建房源、编辑房源、验证数字字段"
+      ],
+      "acceptance_criteria": [
+        "可以输入0值",
+        "可以清空字段（使用数据库默认值）",
+        "大数值(999+)正常保存",
+        "负数被拒绝或转为0",
+        "非法字符提示错误"
+      ],
+      "status": "completed",
+      "passes": true,
+      "notes": "已于2026-03-06修复并测试通过。前端修改4个数字字段的onChange处理逻辑，后端修改POST接口的空值处理。边界值测试全部通过：0值、空字符串、999+大数值、负数转为0。"
+    },
+    {
+      "id": "BUG-017",
+      "category": "bugfix",
+      "priority": "P0",
+      "title": "重构首页搜索逻辑 - 按日期查询空置房源",
+      "description": "首页搜索框不应按地点和人数搜索，应按入住和退房日期搜索出还空置的民宿",
+      "root_cause": "当前SearchModal使用location和guests作为搜索条件，未实现按日期范围查询可用性",
+      "fix_location": [
+        "app/src/sections/SearchModal.tsx:56-74",
+        "backend/api/db.js:154-168 (需添加checkIn/checkOut筛选)"
+      ],
+      "steps": [
+        "修改SearchModal：移除地点/人数，保留日期选择",
+        "修改搜索逻辑：传递checkIn/checkOut参数",
+        "后端API：根据日期范围查询有可用库存的房源",
+        "过滤掉在指定日期范围内无可用库存的房源",
+        "端到端测试：选择日期、搜索、验证结果"
+      ],
+      "acceptance_criteria": [
+        "搜索框只显示日期选择（入住/退房）",
+        "选择日期后点击搜索",
+        "返回结果只包含有可用库存的房源",
+        "已满房的房源不在结果中",
+        "日期范围正确传递到后端"
+      ],
+      "status": "pending",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "BUG-018",
+      "category": "bugfix",
+      "priority": "P0",
+      "title": "修复管理后台无法删除房源问题",
+      "description": "管理后台删除房源功能无法正常工作",
+      "root_cause": "后端API已存在(db.js:478-491)，但可能存在外键约束、权限验证或前端调用问题",
+      "fix_location": [
+        "app/src/pages/HomestayManage.tsx:206-220",
+        "backend/api/db.js:478-491"
+      ],
+      "steps": [
+        "验证后端API正常工作",
+        "检查外键约束：关联订单、收藏、库存记录",
+        "检查权限验证：verifyAdmin中间件",
+        "检查前端删除逻辑：确认对话框、API调用",
+        "实现级联删除或拒绝策略",
+        "端到端测试：创建房源、删除房源、验证结果"
+      ],
+      "acceptance_criteria": [
+        "确认对话框正确显示房源名称",
+        "有关联订单时拒绝删除并提示",
+        "删除成功后房源从列表消失",
+        "关联图片从存储删除",
+        "数据库记录正确删除"
+      ],
+      "status": "pending",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "BUG-TEST-001",
+      "category": "testing",
+      "priority": "P1",
+      "title": "关联功能回归测试",
+      "description": "测试BUG修复后的关联功能是否正常工作",
+      "steps": [
+        "测试删除房源后的收藏列表处理",
+        "测试删除房源后的订单查看",
+        "测试价格修改对未确认订单的影响",
+        "测试并发预订库存扣减",
+        "测试库存修改时的并发控制"
+      ],
+      "acceptance_criteria": [
+        "所有关联功能正常工作",
+        "无数据不一致问题",
+        "无权限越界问题"
+      ],
+      "status": "pending",
+      "passes": false,
+      "notes": ""
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-03-06T00:00:00Z",
+    "total_features": 4,
+    "completed_features": 0,
+    "reported_by": "用户测试反馈",
+    "architect_analysis": "completed"
+  }
+}
