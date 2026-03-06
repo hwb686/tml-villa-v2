@@ -417,10 +417,12 @@ export interface ConfirmResult { orderId: string; status: string; }
 export interface StockDayInfo { date: string; total: number; booked: number; available: number; price: number | null; }
 export interface StockData { [date: string]: StockDayInfo; }
 export interface InitStockResult { count: number; }
-export interface User { id: string; name: string; email: string; avatar?: string; phone?: string; isHost: boolean; }
+export interface User { id: string; name: string; username?: string; email: string; avatar?: string; phone?: string; isHost: boolean; role?: string; status?: string; createdAt?: string; }
 export interface RegisterData { name: string; email: string; password: string; phone?: string; }
 export interface Order { id: string; type: 'homestay' | 'car' | 'ticket' | 'dining'; userId: string; userName: string; itemName: string; totalPrice: number; status: 'pending' | 'confirmed' | 'cancelled' | 'completed'; createdAt: string; }
-export interface Merchant { id: string; type: 'homestay' | 'car' | 'ticket' | 'dining'; name: string; contact: string; phone: string; email: string; status: 'active' | 'inactive' | 'pending'; createdAt: string; }
+
+// Legacy Merchant type for backward compatibility with mock data
+export interface LegacyMerchant { id: string; type: 'homestay' | 'car' | 'ticket' | 'dining'; name: string; contact: string; phone: string; email: string; status: 'active' | 'inactive' | 'pending'; createdAt: string; }
 export interface CreateMerchantData { type: 'homestay' | 'car' | 'ticket' | 'dining'; name: string; contact: string; phone: string; email: string; status?: 'active' | 'inactive' | 'pending'; }
 export interface FinanceOverview { totalRevenue: number; totalOrders: number; pendingWithdrawals: number; monthlyGrowth: number; }
 export interface Transaction { id: string; type: 'income' | 'expense'; amount: number; description: string; createdAt: string; }

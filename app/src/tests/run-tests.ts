@@ -38,7 +38,14 @@ class TestRunner {
     const passed = this.results.filter((r) => r.passed).length;
     const failed = this.results.filter((r) => !r.passed).length;
     const total = this.results.length;
+    console.log(`\n📊 Test Results: ${passed}/${total} passed, ${failed} failed`);
+    if (failed === 0) {
+      console.log('✅ All tests passed!');
+    } else {
+      console.log('❌ Some tests failed. See above for details.');
+    }
   }
+}
 
 // API Tests
 async function runAPITests(): Promise<void> {

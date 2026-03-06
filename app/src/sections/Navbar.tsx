@@ -37,12 +37,12 @@ export default function Navbar({ onSearchClick }: NavbarProps) {
     if (token) {
       userApi.getMe()
         .then(res => {
-          setUser({
-            id: res.data.id,
-            username: res.data.username,
-            email: res.data.email,
-            avatar: res.data.avatar || undefined,
-          });
+        setUser({
+          id: res.data.id,
+          username: res.data.username || res.data.name || '',
+          email: res.data.email,
+          avatar: res.data.avatar || undefined,
+        });
         })
         .catch(() => {
           localStorage.removeItem('userToken');

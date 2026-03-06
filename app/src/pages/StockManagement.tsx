@@ -188,15 +188,16 @@ export default function StockManagement() {
       });
       setIsEditDialogOpen(false);
       // 更新本地状态
-      setStockData(prev => ({
-        ...prev,
-        [dateStr]: {
-          total: editForm.totalStock,
-          booked: editForm.booked,
-          available: editForm.totalStock - editForm.booked,
-          price: price || null,
-        },
-      }));
+    setStockData(prev => ({
+      ...prev,
+      [dateStr]: {
+        date: dateStr,
+        total: editForm.totalStock,
+        booked: editForm.booked,
+        available: editForm.totalStock - editForm.booked,
+        price: price || null,
+      },
+    }));
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新失败');
     } finally {

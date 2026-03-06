@@ -72,11 +72,11 @@ export default function DriverSchedule() {
         // 转换数据格式以适配显示
         const calendar: DriverCalendarData = {};
         for (const [date, info] of Object.entries(response.data)) {
-          calendar[date] = {
-            available: info.status === 'available' ? [{ id: selectedDriverId, name: '', phone: '' }] : [],
-            booked: info.status === 'booked' ? [{ id: selectedDriverId, name: '', phone: '' }] : [],
-            off: info.status === 'off' ? [{ id: selectedDriverId, name: '', phone: '' }] : [],
-          };
+        calendar[date] = {
+          available: info.status === 'available' ? [{ id: selectedDriverId, name: '', phone: '', status: 'active' as const, dailyFee: 0, createdAt: '' }] : [],
+          booked: info.status === 'booked' ? [{ id: selectedDriverId, name: '', phone: '', status: 'active' as const, dailyFee: 0, createdAt: '' }] : [],
+          off: info.status === 'off' ? [{ id: selectedDriverId, name: '', phone: '', status: 'active' as const, dailyFee: 0, createdAt: '' }] : [],
+        };
         }
         setCalendarData(calendar);
       } catch (err) {
@@ -159,9 +159,9 @@ export default function DriverSchedule() {
       const calendar: DriverCalendarData = {};
       for (const [date, info] of Object.entries(response.data)) {
         calendar[date] = {
-          available: info.status === 'available' ? [{ id: selectedDriverId, name: '', phone: '' }] : [],
-          booked: info.status === 'booked' ? [{ id: selectedDriverId, name: '', phone: '' }] : [],
-          off: info.status === 'off' ? [{ id: selectedDriverId, name: '', phone: '' }] : [],
+          available: info.status === 'available' ? [{ id: selectedDriverId, name: '', phone: '', status: 'active' as const, dailyFee: 0, createdAt: '' }] : [],
+          booked: info.status === 'booked' ? [{ id: selectedDriverId, name: '', phone: '', status: 'active' as const, dailyFee: 0, createdAt: '' }] : [],
+          off: info.status === 'off' ? [{ id: selectedDriverId, name: '', phone: '', status: 'active' as const, dailyFee: 0, createdAt: '' }] : [],
         };
       }
       setCalendarData(calendar);

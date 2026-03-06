@@ -987,10 +987,10 @@ export function getTranslations(lang: Language) {
 // Helper function to get nested translation
 export function getNestedTranslation(obj: Record<string, unknown>, path: string): string {
   const keys = path.split('.');
-  let result = obj;
+  let result: unknown = obj;
   for (const key of keys) {
     if (result && typeof result === 'object' && key in result) {
-      result = result[key];
+      result = (result as Record<string, unknown>)[key];
     } else {
       return path; // Return path if translation not found
     }

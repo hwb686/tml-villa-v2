@@ -30,4 +30,4 @@ Object.defineProperty(window, 'localStorage', {
 })
 
 // Mock fetch
-global.fetch = vi.fn()
+;(globalThis as unknown as { fetch: unknown }).fetch = vi.fn()

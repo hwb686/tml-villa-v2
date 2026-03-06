@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,8 +45,8 @@ class ErrorBoundary extends Component<Props, State> {
       this.props.onError(error, errorInfo);
     }
 
-    // 在生产环境中可以发送到错误跟踪服务
-    if (process.env.NODE_ENV === 'production') {
+  // 在生产环境中可以发送到错误跟踪服务
+  if (import.meta.env.PROD) {
       console.error('Error caught by boundary:', error);
       console.error('Component stack:', errorInfo.componentStack);
       // 这里可以集成 Sentry、LogRocket 等错误跟踪服务
@@ -109,7 +109,7 @@ class ErrorBoundary extends Component<Props, State> {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {process.env.NODE_ENV === 'development' && error && (
+              {import.meta.env.DEV && error && (
                 <div className="bg-gray-100 p-4 rounded-lg text-sm overflow-auto max-h-40">
                   <p className="font-mono text-red-600 mb-2">
                     <strong>错误信息:</strong> {error.message}

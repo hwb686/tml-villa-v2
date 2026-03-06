@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { userApi, bookingApi, favoriteApi, reviewApi, notificationApi, membershipApi } from '@/services/api';
-import type { Notification, Review, UserMembership } from '@/services/api';
+import type { Notification, Review, UserMembership, User as ApiUser, Booking as ApiBooking } from '@/services/api';
 import { getHashLink } from '@/lib/router';
 import Navbar from '@/sections/Navbar';
 import {
@@ -20,35 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ReviewForm, StarRating } from '@/components/review';
 
-interface UserInfo {
-  id: string;
-  username: string;
-  email: string;
-  phone: string | null;
-  role: string;
-  status: string;
-  avatar: string | null;
-  isHost: boolean;
-  createdAt: string;
-}
-
-interface Booking {
-  id: string;
-  homestayId: string;
-  homestay: {
-    id: string;
-    title: string;
-    location: string;
-    images: string[];
-    price: number;
-  } | null;
-  checkIn: string | null;
-  checkOut: string | null;
-  guests: number | null;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
-}
+type UserInfo = ApiUser;
+type Booking = ApiBooking;
 
 interface Favorite {
   id: string;
@@ -115,10 +88,10 @@ export default function UserCenter() {
       // 加载用户信息
       const userRes = await userApi.getMe();
       setUser(userRes.data);
-      setEditForm({
-        username: userRes.data.username,
-        phone: userRes.data.phone || '',
-      });
+  setEditForm({
+    username: userRes.data.username || userRes.data.name || '',
+    phone: userRes.data.phone || '',
+  });
 
       // 加载订单
       try {
@@ -163,10 +136,10 @@ export default function UserCenter() {
   const handleUpdateProfile = async () => {
     try {
       setMessage(null);
-      const res = await userApi.updateProfile({
-        username: editForm.username,
-        phone: editForm.phone || null,
-      });
+    const res = await userApi.updateProfile({
+      username: editForm.username,
+      phone: editForm.phone || undefined,
+    });
       setUser(res.data);
       setEditDialogOpen(false);
         setMessage({ type: 'success', text: t.userCenter.updateSuccess });
@@ -252,19 +225,19 @@ export default function UserCenter() {
               <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                 <Avatar className="h-20 w-20">
                   <AvatarImage src={user.avatar || undefined} />
-                  <AvatarFallback className="bg-champagne text-white text-2xl">
-                    {user.username.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1">
-                  <h1 className="text-2xl font-serif font-medium text-ink">{user.username}</h1>
-                  <p className="text-gray-500 mt-1">{user.email}</p>
-                  {user.phone && <p className="text-gray-500 text-sm">{user.phone}</p>}
-                  <div className="flex items-center gap-4 mt-3">
+      <AvatarFallback className="bg-champagne text-white text-2xl">
+        {(user.username || user.name || 'U').charAt(0).toUpperCase()}
+      </AvatarFallback>
+    </Avatar>
+
+    <div className="flex-1">
+      <h1 className="text-2xl font-serif font-medium text-ink">{user.username || user.name}</h1>
+      <p className="text-gray-500 mt-1">{user.email}</p>
+      {user.phone && <p className="text-gray-500 text-sm">{user.phone}</p>}
+      <div className="flex items-center gap-4 mt-3">
         <span className="text-sm text-gray-400">
           <Calendar className="inline h-4 w-4 mr-1" />
-          {t.userCenter.registeredAt} {formatDate(user.createdAt)}
+          {t.userCenter.registeredAt} {formatDate(user.createdAt || '')}
         </span>
                   </div>
                 </div>
@@ -642,7 +615,7 @@ export default function UserCenter() {
                               <span>退房: {formatDate(booking.checkOut)}</span>
                             )}
                             {booking.guests && (
-                              <span>房客: {booking.guests}人</span>
+                              <span>房客: {typeof booking.guests === 'number' ? `${booking.guests}人` : `${booking.guests.adults + booking.guests.children}人`}</span>
                             )}
                           </div>
                           

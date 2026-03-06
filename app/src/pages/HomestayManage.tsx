@@ -418,8 +418,8 @@ const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
                   value={formData.guests ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value === '') {
-                      setFormData({ ...formData, guests: undefined });
+          if (value === '') {
+            setFormData({ ...formData, guests: 0 });
                     } else {
                       const num = parseInt(value);
                       setFormData({ ...formData, guests: isNaN(num) || num < 0 ? 0 : num });
@@ -434,8 +434,8 @@ const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
                   value={formData.bedrooms ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value === '') {
-                      setFormData({ ...formData, bedrooms: undefined });
+          if (value === '') {
+            setFormData({ ...formData, bedrooms: 0 });
                     } else {
                       const num = parseInt(value);
                       setFormData({ ...formData, bedrooms: isNaN(num) || num < 0 ? 0 : num });
@@ -450,8 +450,8 @@ const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
                   value={formData.beds ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value === '') {
-                      setFormData({ ...formData, beds: undefined });
+          if (value === '') {
+            setFormData({ ...formData, beds: 0 });
                     } else {
                       const num = parseInt(value);
                       setFormData({ ...formData, beds: isNaN(num) || num < 0 ? 0 : num });
@@ -466,8 +466,8 @@ const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
                   value={formData.bathrooms ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value === '') {
-                      setFormData({ ...formData, bathrooms: undefined });
+          if (value === '') {
+            setFormData({ ...formData, bathrooms: 0 });
                     } else {
                       const num = parseInt(value);
                       setFormData({ ...formData, bathrooms: isNaN(num) || num < 0 ? 0 : num });

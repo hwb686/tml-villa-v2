@@ -171,7 +171,17 @@ let mockOrders: Order[] = [
 ];
 
 // Mock Merchants Data
-let mockMerchants: Merchant[] = [
+interface LegacyMerchantForMock {
+  id: string;
+  type: 'homestay' | 'car' | 'ticket' | 'dining';
+  name: string;
+  contact: string;
+  phone: string;
+  email: string;
+  status: 'active' | 'inactive' | 'pending';
+  createdAt: string;
+}
+let mockMerchants: LegacyMerchantForMock[] = [
   { id: 'M001', type: 'homestay', name: '曼谷精品民宿', contact: '陈经理', phone: '+66 81****1234', email: 'bangkok@example.com', status: 'active', createdAt: '2024-01-01' },
   { id: 'M002', type: 'car', name: '普吉岛租车服务', contact: '李经理', phone: '+66 82****5678', email: 'phuket@example.com', status: 'active', createdAt: '2024-02-01' },
   { id: 'M003', type: 'ticket', name: '泰国景点票务', contact: '王经理', phone: '+66 83****9012', email: 'tickets@example.com', status: 'pending', createdAt: '2024-03-01' },
