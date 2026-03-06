@@ -17,6 +17,9 @@ export default function SearchResults() {
   // 从URL参数获取初始值
   const initialKeyword = query?.keyword || '';
   const initialCategory = query?.category || '';
+  // BUG-017修复: 从URL参数获取日期，传递给API进行库存过滤
+  const initialCheckIn = query?.checkIn || '';
+  const initialCheckOut = query?.checkOut || '';
   
   // 状态
   const [keyword, setKeyword] = useState(initialKeyword);
@@ -38,6 +41,9 @@ export default function SearchResults() {
       
       if (keyword) params.keyword = keyword;
       if (initialCategory) params.category = initialCategory;
+      // BUG-017修复: 将日期参数传递给API，后端会根据库存过滤
+      if (initialCheckIn) params.checkIn = initialCheckIn;
+      if (initialCheckOut) params.checkOut = initialCheckOut;
       if (filters.minPrice) params.minPrice = filters.minPrice;
       if (filters.maxPrice) params.maxPrice = filters.maxPrice;
       if (filters.bedrooms) params.bedrooms = filters.bedrooms;
@@ -60,7 +66,7 @@ export default function SearchResults() {
   // 初始搜索和参数变化时搜索
   useEffect(() => {
     searchHomestays();
-  }, [keyword, filters, sortBy, initialCategory]);
+  }, [keyword, filters, sortBy, initialCategory, initialCheckIn, initialCheckOut]);
 
   // 处理搜索
   const handleSearch = () => {
