@@ -1,0 +1,118 @@
+- generic [ref=e84]:
+  - navigation [ref=e85]:
+    - generic [ref=e86]:
+      - generic [ref=e87]:
+        - link "TML Villa TML Villa" [ref=e88] [cursor=pointer]:
+          - /url: "#/"
+          - img "TML Villa" [ref=e89]
+          - generic [ref=e90]: TML Villa
+        - generic [ref=e91]:
+          - link "民宿" [ref=e92] [cursor=pointer]:
+            - /url: "#/"
+          - link "租车" [ref=e93] [cursor=pointer]:
+            - /url: "#/car-rental"
+          - link "餐饮" [ref=e94] [cursor=pointer]:
+            - /url: "#/meal-order"
+          - link "票务预订" [ref=e95] [cursor=pointer]:
+            - /url: "#/ticket-booking"
+        - generic [ref=e96]:
+          - button "ZH" [ref=e97] [cursor=pointer]:
+            - img [ref=e98]
+            - generic [ref=e101]: ZH
+          - button "1" [ref=e103] [cursor=pointer]:
+            - img
+            - generic [ref=e104]: "1"
+          - button "T" [ref=e105] [cursor=pointer]:
+            - generic [ref=e107]: T
+      - generic [ref=e109] [cursor=pointer]:
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: 地点
+          - paragraph [ref=e112]: 搜索目的地
+        - generic [ref=e113]:
+          - paragraph [ref=e114]: 入住
+          - paragraph [ref=e115]: 添加日期
+        - generic [ref=e116]:
+          - paragraph [ref=e117]: 退房
+          - paragraph [ref=e118]: 添加日期
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - paragraph [ref=e121]: 人数
+            - paragraph [ref=e122]: 添加客人
+          - button [ref=e123]:
+            - img [ref=e124]
+  - generic [ref=e130]:
+    - generic [ref=e133]:
+      - generic [ref=e135]: T
+      - generic [ref=e136]:
+        - heading "testuser" [level=1] [ref=e137]
+        - paragraph [ref=e138]: test@example.com
+        - paragraph [ref=e139]: "+66123456789"
+        - generic [ref=e141]:
+          - img [ref=e142]
+          - text: 注册于 2026年2月20日
+      - generic [ref=e144]:
+        - button "编辑资料" [ref=e145] [cursor=pointer]:
+          - img
+          - text: 编辑资料
+        - button "修改密码" [ref=e146] [cursor=pointer]:
+          - img
+          - text: 修改密码
+        - button "退出登录" [ref=e147] [cursor=pointer]:
+          - img
+          - text: 退出登录
+    - generic [ref=e148]:
+      - generic [ref=e150] [cursor=pointer]:
+        - img [ref=e152]
+        - paragraph [ref=e154]: 会员中心
+        - paragraph [ref=e155]: 普通会员
+      - generic [ref=e157] [cursor=pointer]:
+        - img [ref=e158]
+        - paragraph [ref=e162]: 我的订单
+        - paragraph [ref=e163]: 3 个订单
+      - generic [ref=e165] [cursor=pointer]:
+        - generic [ref=e166]:
+          - img [ref=e167]
+          - generic [ref=e170]: "1"
+        - paragraph [ref=e171]: 消息通知
+        - paragraph [ref=e172]: 1 条未读
+      - generic [ref=e174] [cursor=pointer]:
+        - img [ref=e175]
+        - paragraph [ref=e177]: 我的收藏
+        - paragraph [ref=e178]: 1 个收藏
+      - generic [ref=e180] [cursor=pointer]:
+        - img [ref=e181]
+        - paragraph [ref=e183]: 我的评价
+        - paragraph [ref=e184]: 1 条评价
+      - generic [ref=e186] [cursor=pointer]:
+        - img [ref=e187]
+        - paragraph [ref=e190]: 个人资料
+        - paragraph [ref=e191]: 编辑信息
+    - generic [ref=e192]:
+      - tablist [ref=e193]:
+        - tab "会员中心" [ref=e194] [cursor=pointer]
+        - tab "个人资料" [selected] [ref=e195] [cursor=pointer]
+        - tab "我的订单" [ref=e196] [cursor=pointer]
+        - tab "消息通知 1" [ref=e197] [cursor=pointer]:
+          - text: 消息通知
+          - generic [ref=e198]: "1"
+        - tab "我的收藏" [ref=e199] [cursor=pointer]
+        - tab "我的评价" [ref=e200] [cursor=pointer]
+      - tabpanel "个人资料" [ref=e201]:
+        - generic [ref=e202]:
+          - generic [ref=e204]: 基本信息
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - img [ref=e208]
+              - generic [ref=e211]:
+                - paragraph [ref=e212]: 用户名
+                - paragraph [ref=e213]: testuser
+            - generic [ref=e214]:
+              - img [ref=e215]
+              - generic [ref=e218]:
+                - paragraph [ref=e219]: 邮箱
+                - paragraph [ref=e220]: test@example.com
+            - generic [ref=e221]:
+              - img [ref=e222]
+              - generic [ref=e224]:
+                - paragraph [ref=e225]: 手机号
+                - paragraph [ref=e226]: "+66123456789"

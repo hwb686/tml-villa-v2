@@ -116,7 +116,7 @@ export default function HomestayDetail() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   const handleFavoriteToggle = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     if (!token) {
       toast({
         title: t.homestayDetail.pleaseLogin,
@@ -150,7 +150,7 @@ export default function HomestayDetail() {
 
   // 检查登录状态
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('userToken');
     const userStr = localStorage.getItem('user');
     if (token && userStr) {
       try {
