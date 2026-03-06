@@ -14,11 +14,12 @@
 - **技术栈:** React + TypeScript + Vite (前端) | Node.js + Express + Prisma (后端) | PostgreSQL (Supabase)
 
 ## 概览
-- **功能总数:** 25
-- **已完成:** 3
+- **功能总数:** 27
+- **已完成:** 26 (F000-F026，含 BUG-016/017/018 修复)
 - **进行中:** 0
-- **剩余:** 22
-- **当前阶段:** 功能规划完成，准备开发
+- **剩余:** 0
+- **当前阶段:** 所有功能已完成，进入回归测试与BUG修复阶段
+- **最后更新:** 2026-03-06 (架构师审查)
 
 ## 部署信息
 | 服务 | URL |
@@ -1970,3 +1971,140 @@ const translations = {
 - BUG-016: 已完成 (passes: true)
 - 下一个任务: BUG-017 - 重构首页搜索逻辑
 
+
+---
+
+## 会话 - BUG-018 修复 / SESSION - BUG-018 FIX
+
+**日期:** 2026-03-06
+**Agent:** 编码Agent (long-running-coder)
+**功能:** BUG-018 - 修复管理后台无法删除房源问题
+
+### 问题描述:
+管理后台删除房源功能无法正常工作，原因包括：
+1. 前端API调用使用fetchApi而非fetchAdminApi，导致权限验证失败
+2. 后端缺少关联订单检查
+3. 缺少级联删除逻辑
+4. 前端确认对话框信息不完整
+
+### 修复内容:
+
+#### 后端 (backend/api/db.js)
+- ✅ 添加关联订单检查（pending/confirmed状态）
+- ✅ 有关联订单时拒绝删除，返回400错误和订单号列表
+- ✅ 使用事务实现级联删除：
+  - 删除房源库存记录 (HouseStock)
+  - 删除用户收藏记录 (Favorite)
+  - 删除评价记录 (Review)
+  - 删除房源主体 (Homestay)
+- ✅ 清除缓存确保数据一致性
+
+#### 前端 (app/src/pages/HomestayManage.tsx)
+- ✅ 添加deleteLoading和deleteError状态管理
+- ✅ 增强确认对话框UI：
+  - 显示房源名称
+  - 显示将删除的图片数量
+  - 显示删除风险提示（库存、收藏、评价记录）
+  - 添加错误提示区域（红色背景）
+- ✅ 添加删除按钮加载状态
+- ✅ 对话框关闭时重置状态
+
+#### API服务 (app/src/services/api.ts)
+- ✅ 修复homestayApi.create/update/delete使用fetchAdminApi
+- ✅ 确保管理员操作携带正确Token
+
+### 测试验证:
+1. **无关联订单房源删除** ✅
+   - 创建测试房源
+   - 删除成功，返回200
+   - 验证房源已不存在（返回404）
+
+2. **有关联订单房源删除** ✅
+   - 尝试删除有5个pending/confirmed订单的房源
+   - 被拒绝删除，返回400
+   - 错误消息显示具体订单号列表
+
+3. **级联删除验证** ✅
+   - 删除房源时同时删除库存记录
+   - 删除房源时同时删除收藏记录
+   - 删除房源时同时删除评价记录
+
+4. **UI验证** ✅
+   - 确认对话框显示房源名称
+   - 确认对话框显示图片数量
+   - 删除按钮有加载状态
+   - 错误消息正确显示
+
+### 修改的文件:
+- backend/api/db.js (删除API重构)
+- app/src/pages/HomestayManage.tsx (删除逻辑增强)
+- app/src/services/api.ts (API调用修复)
+- bugfix_list.json (BUG-018标记完成)
+
+### 提交信息:
+- Hash: d04b345
+
+### 状态:
+- BUG-018: 已完成 (passes: true)
+- 所有3个BUG修复完成！
+
+---
+
+---
+
+## 会话 BUG-TEST-001 - 2026-03-06
+**Agent:** 编码Agent (long-running-coder)
+**任务:** BUG-TEST-001 回归测试 + 发现BUG修复
+
+### 开始时状态 / Status at Start:
+- 已完成功能: 26/27
+- 当前任务: 执行 BUG-TEST-001 回归测试
+- BUG-016/017/018 已于 2026-03-06 修复
+- 服务状态: 前后端均需重启
+
+### 完成的工作 / Work Completed:
+
+#### 测试 1: BUG-017 日期搜索功能回归
+- **发现新BUG**: SearchResults.tsx 从URL读取了 checkIn/checkOut 但未传给 API，导致日期过滤失效
+- **修复**: 添加 initialCheckIn/initialCheckOut，在 searchHomestays() 中传递给 API
+- **验证**: 带日期参数搜索结果从2个减为1个 ✅
+
+#### 测试 2: BUG-016 数字字段修改
+- **发现新BUG**: 后端 PUT /api/homestays/:id 使用 `guests ? parseInt(guests) : undefined`，0值是falsy被跳过
+- **修复**: 改为 `guests !== undefined && guests !== '' ? parseInt(guests) : undefined`
+- **验证**: API直接测试 guests=0 成功保存到数据库 ✅
+
+#### 测试 3: BUG-018 房源删除
+- **验证**: 无关联订单房源删除成功 (code:200) ✅
+- **验证**: 有2个关联订单的房源删除被拒绝 (code:400，返回订单号列表) ✅
+
+#### 测试 4: BUG-008 登录错误提示
+- **发现新BUG**: LoginPage.tsx 使用 `lang` 变量但未从 `useLanguage()` 解构，导致页面崩溃
+- **修复**: `const { t } = useLanguage()` 改为 `const { t, lang } = useLanguage()`
+- **验证**: 错误密码登录显示"密码错误"提示，页面正常运行 ✅
+
+#### 测试 5: BUG-009 未登录重定向
+- **验证**: 清除 localStorage 后访问 /#/user，成功重定向到 /#/login ✅
+
+#### 测试 6: BUG-011 控制台404错误
+- **验证**: 首页加载 0 个错误，无404资源问题 ✅
+
+### 修改的文件 / Files Modified:
+- app/src/pages/SearchResults.tsx (传递日期参数给API)
+- app/src/pages/LoginPage.tsx (修复 lang 未定义)
+- backend/api/db.js (修复0值falsy检查)
+- bugfix_list.json (更新所有测试状态)
+
+### 提交信息 / Commit:
+- Hash: cdb3cf9
+- Message: fix(BUG-TEST-001): 回归测试修复3个新发现的BUG
+
+### 结束时状态 / Status at End:
+- BUG-TEST-001: COMPLETED (passes: true)
+- BUG-016/017/018: 回归验证通过
+- BUG-008: 修复 lang 未定义，登录错误提示正常
+- BUG-009: 未登录重定向正常
+- BUG-011: 无404错误
+- 所有7个验收标准均通过
+
+---
