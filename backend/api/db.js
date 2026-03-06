@@ -272,8 +272,66 @@ app.get('/api/homestays', async (req, res) => {
       };
     });
     
+    // BUG-017: 如果提供了checkIn和checkOut，过滤掉在这些日期内无可用库存的房源
+    let filteredHomestays = homestays;
+    if (checkIn && checkOut) {
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+      
+      // 获取日期范围内的所有日期
+      const datesInRange = [];
+      const current = new Date(checkInDate);
+      while (current < checkOutDate) {
+        datesInRange.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+      
+      // 查询这些日期的所有库存记录
+      const allStockRecords = await prisma.houseStock.findMany({
+        where: {
+          date: {
+            gte: checkInDate,
+            lt: checkOutDate,
+          },
+        },
+      });
+      
+      // 按房源ID组织库存记录
+      const stockMap = {};
+      allStockRecords.forEach(stock => {
+        if (!stockMap[stock.houseId]) {
+          stockMap[stock.houseId] = {};
+        }
+        const dateKey = stock.date.toISOString().split('T')[0];
+        stockMap[stock.houseId][dateKey] = stock;
+      });
+      
+      // 过滤房源：只保留每一天都有可用库存的房源
+      filteredHomestays = homestays.filter(h => {
+        // 检查日期范围内的每一天
+        for (const date of datesInRange) {
+          const dateKey = date.toISOString().split('T')[0];
+          const stock = stockMap[h.id]?.[dateKey];
+          
+          // 如果没有库存记录，或者可用库存 <= 0，则过滤掉该房源
+          if (!stock) {
+            // 没有库存记录，假设该日无可用库存
+            return false;
+          }
+          
+          const available = stock.totalStock - stock.bookedStock;
+          if (available <= 0) {
+            // 该日库存已满
+            return false;
+          }
+        }
+        // 所有日期都有可用库存
+        return true;
+      });
+    }
+
     // Transform to match frontend format
-    const formatted = homestays.map(h => {
+    const formatted = filteredHomestays.map(h => {
       // 生成高亮文本
       const titleHighlight = highlightKeyword(h.title, keyword);
       const locationHighlight = highlightKeyword(h.location, keyword);
@@ -314,7 +372,10 @@ app.get('/api/homestays', async (req, res) => {
       data: formatted,
       meta: {
         total: formatted.length,
+        totalBeforeFilter: homestays.length,
         keyword: keyword || null,
+        checkIn: checkIn || null,
+        checkOut: checkOut || null,
         filters: {
           category: category || null,
           minPrice: minPrice ? parseInt(minPrice) : null,
@@ -326,8 +387,9 @@ app.get('/api/homestays', async (req, res) => {
       }
     };
     
-    // 只对无搜索参数的请求缓存
-    if (!keyword && !minPrice && !maxPrice && !bedrooms && !amenities && !sortBy) {
+    // BUG-017: 有日期筛选时不缓存
+    // 只对无搜索参数和日期筛选的请求缓存
+    if (!keyword && !minPrice && !maxPrice && !bedrooms && !amenities && !sortBy && !checkIn && !checkOut) {
       cache.set('homestays:all', payload);
     }
     

@@ -1106,7 +1106,7 @@ export const reportsApi = {
     const queryParams = new URLSearchParams();
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
-    return fetchApi<ReportOverview>(`/reports/overview?${queryParams.toString()}`);
+    return fetchAdminApi<ReportOverview>(`/reports/overview?${queryParams.toString()}`);
   },
   
   // 获取收入报表
@@ -1115,7 +1115,7 @@ export const reportsApi = {
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
     if (params?.groupBy) queryParams.append('groupBy', params.groupBy);
-    return fetchApi<RevenueReport>(`/reports/revenue?${queryParams.toString()}`);
+    return fetchAdminApi<RevenueReport>(`/reports/revenue?${queryParams.toString()}`);
   },
   
   // 获取订单报表
@@ -1123,7 +1123,7 @@ export const reportsApi = {
     const queryParams = new URLSearchParams();
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
-    return fetchApi<OrderReport>(`/reports/orders?${queryParams.toString()}`);
+    return fetchAdminApi<OrderReport>(`/reports/orders?${queryParams.toString()}`);
   },
   
   // 获取用户报表
@@ -1131,7 +1131,7 @@ export const reportsApi = {
     const queryParams = new URLSearchParams();
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
-    return fetchApi<UserReport>(`/reports/users?${queryParams.toString()}`);
+    return fetchAdminApi<UserReport>(`/reports/users?${queryParams.toString()}`);
   },
   
   // 获取房源报表
@@ -1139,7 +1139,7 @@ export const reportsApi = {
     const queryParams = new URLSearchParams();
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
-    return fetchApi<HomestayReport>(`/reports/homestays?${queryParams.toString()}`);
+    return fetchAdminApi<HomestayReport>(`/reports/homestays?${queryParams.toString()}`);
   },
 };
 

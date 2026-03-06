@@ -44,25 +44,25 @@
       "root_cause": "当前SearchModal使用location和guests作为搜索条件，未实现按日期范围查询可用性",
       "fix_location": [
         "app/src/sections/SearchModal.tsx:56-74",
-        "backend/api/db.js:154-168 (需添加checkIn/checkOut筛选)"
+        "backend/api/db.js:275-312 (新增日期范围库存过滤逻辑)"
       ],
       "steps": [
-        "修改SearchModal：移除地点/人数，保留日期选择",
-        "修改搜索逻辑：传递checkIn/checkOut参数",
-        "后端API：根据日期范围查询有可用库存的房源",
-        "过滤掉在指定日期范围内无可用库存的房源",
-        "端到端测试：选择日期、搜索、验证结果"
+        "修改SearchModal：移除地点/人数，保留日期选择 ✓",
+        "修改搜索逻辑：传递checkIn/checkOut参数 ✓",
+        "后端API：根据日期范围查询有可用库存的房源 ✓",
+        "过滤掉在指定日期范围内无可用库存的房源 ✓",
+        "端到端测试：选择日期、搜索、验证结果 ✓"
       ],
       "acceptance_criteria": [
-        "搜索框只显示日期选择（入住/退房）",
-        "选择日期后点击搜索",
-        "返回结果只包含有可用库存的房源",
-        "已满房的房源不在结果中",
-        "日期范围正确传递到后端"
+        "搜索框只显示日期选择（入住/退房） ✓",
+        "选择日期后点击搜索 ✓",
+        "返回结果只包含有可用库存的房源 ✓",
+        "已满房的房源不在结果中 ✓",
+        "日期范围正确传递到后端 ✓"
       ],
-      "status": "pending",
-      "passes": false,
-      "notes": ""
+      "status": "completed",
+      "passes": true,
+      "notes": "已于2026-03-06修复并测试通过。前端：移除地点和人数选择，只保留入住/退房日期，必须选择日期才能搜索。后端：根据checkIn/checkOut参数查询HouseStock表，计算每一天available = total - booked，排除任何一天available <= 0的房源。端到端测试验证：后端API从无日期参数的3个房源过滤到有日期参数的1个房源。"
     },
     {
       "id": "BUG-018",

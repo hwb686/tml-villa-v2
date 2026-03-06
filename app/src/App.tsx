@@ -12,6 +12,7 @@ import TicketBookingPage from '@/pages/TicketBooking';
 import UserCenter from '@/pages/UserCenter';
 import LoginPage from '@/pages/LoginPage';
 import SearchResults from '@/pages/SearchResults';
+import DesignPreview from '@/pages/DesignPreview';
 import AdminApp from '@/AdminApp';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { homestayApi, type Homestay } from '@/services/api';
@@ -113,6 +114,8 @@ export default function App() {
         return <UserCenter />;
       case '/search':
         return <SearchResults />;
+      case '/design-preview':
+        return <DesignPreview />;
       default:
         if (pathWithoutQuery.startsWith('/homestay/')) {
           return <HomestayDetail />;
