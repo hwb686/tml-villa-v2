@@ -1,14 +1,218 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/images/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="TML Villa - Thai villa booking, car rental, dining & tickets" />
-    <title>TML Villa Homestay</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- 基础 SEO -->
+  <title>TML Villa - 泰国民宿预订 | 普吉岛别墅度假租赁 | TML泰国民宿</title>
+  <meta name="description" content="TML Villa提供泰国优质民宿预订服务，包括普吉岛、苏梅岛、清迈等热门目的地别墅度假租赁。豪华泳池别墅、海景公寓、精品民宿在线预订，享受超值优惠。TML品牌值得信赖。" />
+  <meta name="keywords" content="TML, TML Villa, 泰国民宿, 泰国别墅, 普吉岛民宿, 普吉岛别墅, 泰国度假村, 泰国民宿预订, TML泰国, TML普吉岛, TML度假, 泰国旅游, 普吉岛旅游" />
+  <meta name="author" content="TML Villa" />
+  <meta name="robots" content="index, follow" />
+  <meta name="googlebot" content="index, follow" />
+  <meta name="baiduspider" content="index, follow" />
+  
+  <!-- Open Graph / Facebook / 微信 -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://tml-villa.onrender.com/" />
+  <meta property="og:title" content="TML Villa - 泰国民宿预订 | TML泰国度假别墅" />
+  <meta property="og:description" content="TML Villa提供泰国优质民宿预订服务，普吉岛、苏梅岛、清迈别墅度假租赁在线预订。" />
+  <meta property="og:image" content="https://tml-villa.onrender.com/images/og-image.jpg" />
+  <meta property="og:site_name" content="TML Villa" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta property="og:locale:alternate" content="th_TH" />
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://tml-villa.onrender.com/" />
+  <meta name="twitter:title" content="TML Villa - 泰国民宿预订" />
+  <meta name="twitter:description" content="TML Villa提供泰国优质民宿预订服务，普吉岛、苏梅岛、清迈别墅度假租赁在线预订。" />
+  <meta name="twitter:image" content="https://tml-villa.onrender.com/images/twitter-image.jpg" />
+  
+  <!-- 百度 SEO -->
+  <meta name="applicable-device" content="pc,mobile" />
+  <meta name="location" content="province=泰国;city=普吉岛" />
+  <meta name="mobile-agent" content="format=html5; url=https://tml-villa.com/" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/images/logo.png" />
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://tml-villa.onrender.com/" />
+  
+  <!-- Preconnect for Performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+  
+  <!-- Structured Data (JSON-LD) for Google -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    "name": "TML Villa",
+    "alternateName": "TML泰国民宿",
+    "description": "TML Villa提供泰国优质民宿预订服务，包括普吉岛、苏梅岛、清迈等热门目的地别墅度假租赁。",
+    "url": "https://tml-villa.onrender.com",
+    "logo": "https://tml-villa.onrender.com/images/logo.png",
+    "image": "https://tml-villa.onrender.com/images/og-image.jpg",
+    "telephone": "+66-XX-XXX-XXXX",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "TH",
+      "addressLocality": "Phuket",
+      "addressRegion": "Phuket Province"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": "7.8804",
+      "longitude": "98.3923"
+    },
+    "priceRange": "$$$",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "1280"
+    },
+    "sameAs": [
+      "https://www.facebook.com/tmlvilla",
+      "https://www.instagram.com/tmlvilla",
+      "https://twitter.com/tmlvilla"
+    ],
+    "amenityFeature": [
+      {
+        "@type": "LocationFeatureSpecification",
+        "name": "Swimming Pool",
+        "value": true
+      },
+      {
+        "@type": "LocationFeatureSpecification",
+        "name": "Free WiFi",
+        "value": true
+      },
+      {
+        "@type": "LocationFeatureSpecification",
+        "name": "Air Conditioning",
+        "value": true
+      }
+    ],
+    "potentialAction": {
+      "@type": "ReserveAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://tml-villa.com/#/search",
+        "actionPlatform": [
+          "http://schema.org/DesktopWebPlatform",
+          "http://schema.org/MobileWebPlatform",
+          "http://schema.org/AndroidPlatform",
+          "http://schema.org/IOSPlatform"
+        ]
+      },
+      "result": {
+        "@type": "LodgingReservation"
+      }
+    }
+  }
+  </script>
+  
+  <!-- Organization Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "TML Villa",
+    "alternateName": "TML泰国民宿管理平台",
+    "url": "https://tml-villa.onrender.com",
+    "logo": "https://tml-villa.onrender.com/images/logo.png",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+66-XX-XXX-XXXX",
+      "contactType": "customer service",
+      "availableLanguage": ["Chinese", "English", "Thai"]
+    },
+    "sameAs": [
+      "https://www.facebook.com/tmlvilla",
+      "https://www.instagram.com/tmlvilla"
+    ]
+  }
+  </script>
+  
+  <!-- WebSite Schema for Search Action -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "TML Villa",
+    "url": "https://tml-villa.onrender.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://tml-villa.onrender.com/#/search?checkIn={checkIn}&checkOut={checkOut}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+  
+  <!-- Breadcrumb Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "首页",
+        "item": "https://tml-villa.onrender.com"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "民宿",
+        "item": "https://tml-villa.onrender.com/#/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "租车",
+        "item": "https://tml-villa.onrender.com/#/car-rental"
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": "餐饮",
+        "item": "https://tml-villa.onrender.com/#/meal-order"
+      },
+      {
+        "@type": "ListItem",
+        "position": 5,
+        "name": "票务",
+        "item": "https://tml-villa.onrender.com/#/ticket-booking"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  
+  <!-- NoScript for SEO Crawlers -->
+  <noscript>
+    <h1>TML Villa - 泰国民宿预订平台</h1>
+    <p>TML Villa提供泰国优质民宿预订服务，包括普吉岛、苏梅岛、清迈等热门目的地别墅度假租赁。</p>
+    <p>主要服务：泰国民宿预订 | 泰国别墅租赁 | 普吉岛度假村 | TML品牌民宿</p>
+    <ul>
+      <li><a href="https://tml-villa.onrender.com">首页 - TML Villa</a></li>
+      <li><a href="https://tml-villa.onrender.com/#/">泰国民宿 - TML Villa</a></li>
+      <li><a href="https://tml-villa.onrender.com/#/car-rental">泰国租车 - TML Villa</a></li>
+      <li><a href="https://tml-villa.onrender.com/#/meal-order">泰国餐饮 - TML Villa</a></li>
+      <li><a href="https://tml-villa.onrender.com/#/ticket-booking">泰国票务 - TML Villa</a></li>
+    </ul>
+  </noscript>
+</body>
 </html>

@@ -1,0 +1,5 @@
+- textbox "用户名" [ref=e1]
+- textbox "密码" [ref=e2]
+- button [ref=e3]
+- checkbox "记住我" [ref=e4]
+- button "登录" [ref=e5]

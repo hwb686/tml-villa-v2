@@ -1,0 +1,43 @@
+# Robots.txt for TML Villa
+# https://tml-villa.onrender.com/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /user
+
+# Sitemap location
+Sitemap: https://tml-villa.onrender.com/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# Google specific
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Crawl-delay: 0
+
+# Baidu specific
+User-agent: Baiduspider
+Allow: /
+Disallow: /admin/
+Crawl-delay: 1
+
+# Bing specific
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Crawl-delay: 1
+
+# Block bad bots
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /

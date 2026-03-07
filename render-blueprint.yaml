@@ -1,0 +1,79 @@
+services:
+  - type: web
+    name: tml-villa-frontend
+    env: static
+    buildCommand: cd app && npm install && npm run build
+    staticPublishPath: app/dist
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_BASE_URL
+        value: https://tml-villa-backend.onrender.com/api
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+  - type: web
+    name: tml-villa-backend
+    env: node
+    region: singapore
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      # Supabase 数据库配置 - 需要从 Supabase Dashboard 获取
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://tml-villa.onrender.com
+      - key: FRONTEND_URL
+        value: https://tml-villa.onrender.com
+      # 邮件服务配置（可选）
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+# 注意：数据库使用 Supabase，不在 Render 上创建
+# Supabase 项目地址：https://supabase.com/dashboard

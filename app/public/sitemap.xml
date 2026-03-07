@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>https://tml-villa.onrender.com/</loc>
+    <lastmod>2026-03-06</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://tml-villa.onrender.com/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tml-villa.onrender.com/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="th" href="https://tml-villa.onrender.com/?lang=th"/>
+  </url>
+  
+  <!-- Homestay Search -->
+  <url>
+    <loc>https://tml-villa.onrender.com/#/</loc>
+    <lastmod>2026-03-06</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Car Rental -->
+  <url>
+    <loc>https://tml-villa.onrender.com/#/car-rental</loc>
+    <lastmod>2026-03-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Dining -->
+  <url>
+    <loc>https://tml-villa.onrender.com/#/meal-order</loc>
+    <lastmod>2026-03-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Ticket Booking -->
+  <url>
+    <loc>https://tml-villa.onrender.com/#/ticket-booking</loc>
+    <lastmod>2026-03-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Search Results -->
+  <url>
+    <loc>https://tml-villa.onrender.com/#/search</loc>
+    <lastmod>2026-03-06</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+</urlset>

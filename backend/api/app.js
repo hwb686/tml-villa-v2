@@ -3,8 +3,7 @@ const helmet = require('helmet');
 const path = require('path');
 const prisma = require('../lib/prisma');
 
-// Import middleware
-const { apiLimiter } = require('./middleware/rateLimit.middleware');
+const { apiLimiter, globalLimiter, strictLimiter } = require('./middleware/rateLimit.middleware');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -14,18 +13,18 @@ const orderRoutes = require('./routes/order.routes');
 
 const app = express();
 
-// CORS configuration
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000'];
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['https://tml-villa.onrender.com'])
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (!origin || ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes('*')) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   res.setHeader('Access-Control-Max-Age', '86400');
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
@@ -33,14 +32,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body parsing
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Security headers
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
-// Rate limiting
-app.use('/api/', apiLimiter);
+app.use('/api/', globalLimiter);
 
 // Mount routes
 app.use('/api/auth', authRoutes);

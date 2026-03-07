@@ -1,10 +1,15 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
-const JWT_EXPIRES_IN = '24h';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required. Please set it in your .env file.');
+}
 
-/** 生成 JWT Token */
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+
 const generateToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+const generateRefreshToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
 
 /** JWT 认证中间件 - 验证用户Token */
 const authMiddleware = async (req, res, next) => {
@@ -53,6 +58,7 @@ const verifyAdmin = (req, res, next) => {
 module.exports = {
   JWT_SECRET,
   generateToken,
+  generateRefreshToken,
   authMiddleware,
   verifyAdmin
 };

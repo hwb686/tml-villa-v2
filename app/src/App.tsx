@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { LanguageProvider } from '@/hooks/useLanguage';
 import Navbar from '@/sections/Navbar';
 import HomestayGrid from '@/sections/HomestayGrid';
-import SearchModal from '@/sections/SearchModal';
 import TestPage from '@/pages/TestPage';
 import HomestayDetail from '@/pages/HomestayDetail';
 import CarDetail from '@/pages/CarDetail';
@@ -24,7 +23,6 @@ import { Button } from '@/components/ui/button';
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 function HomePage() {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +49,7 @@ function HomePage() {
   if (error) {
     return (
       <div className="min-h-screen pt-44">
-        <Navbar onSearchClick={() => setIsSearchOpen(true)} />
+        <Navbar />
         <div className="container-luxury py-20 flex flex-col items-center justify-center">
           <AlertCircle size={48} className="text-red-500 mb-4" />
           <p className="text-gray-600 mb-2">{error}</p>
@@ -65,7 +63,7 @@ function HomePage() {
 
   return (
     <>
-      <Navbar onSearchClick={() => setIsSearchOpen(true)} />
+      <Navbar />
       <div className="pt-44">
         {isLoading ? (
           <div className="container-luxury py-20 flex items-center justify-center">
@@ -75,7 +73,6 @@ function HomePage() {
           <HomestayGrid homestays={homestays} />
         )}
       </div>
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }
