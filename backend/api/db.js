@@ -136,6 +136,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ code: 200, msg: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Graceful shutdown so Prisma disconnects cleanly (helps free Supabase connections)
 const shutdown = async () => {
   console.log('shutting down server, disconnecting prisma...');
