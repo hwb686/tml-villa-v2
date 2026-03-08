@@ -9,94 +9,86 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  username     String     @unique
-  email        String     @unique
-  phone        String?
-  password     String
-  role         String     @default("USER")
-  status       String     @default("active")
-  avatar       String?
-  isHost       Boolean    @default(false)
-  // 会员系统字段
-  points       Int        @default(0) @map("points") // 当前积分
-  totalPoints  Int        @default(0) @map("total_points") // 累计积分
-  levelId      String?    @map("level_id") // 会员等级ID
-  createdAt    DateTime   @default(now()) @map("create_time")
-  updatedAt    DateTime   @updatedAt
-  orders       Order[]
-  favorites    Favorite[]
-  reviews      Review[]
+  id            String         @id @default(cuid())
+  username      String         @unique
+  email         String         @unique
+  phone         String?
+  password      String
+  role          String         @default("USER")
+  status        String         @default("active")
+  avatar        String?
+  isHost        Boolean        @default(false)
+  createdAt     DateTime       @default(now()) @map("create_time")
+  updatedAt     DateTime       @updatedAt
+  levelId       String?        @map("level_id")
+  points        Int            @default(0) @map("points")
+  totalPoints   Int            @default(0) @map("total_points")
+  favorites     Favorite[]
   notifications Notification[]
-  pointLogs    PointLog[]
-  level        MemberLevel? @relation(fields: [levelId], references: [id])
-  
+  orders        Order[]
+  pointLogs     PointLog[]
+  reviews       Review[]
+  level         MemberLevel?   @relation(fields: [levelId], references: [id])
+
   @@map("users")
 }
 
-// 会员等级配置
 model MemberLevel {
-  id            String   @id @default(cuid())
-  name          String   // 等级名称，如"普通会员"、"银卡会员"、"金卡会员"
-  nameEn        String   @map("name_en") // 英文名称
-  minPoints     Int      @map("min_points") // 升级所需最低累计积分
-  maxPoints     Int      @map("max_points") // 该等级最高积分（下一等级的minPoints-1）
-  discount      Int      @default(0) // 折扣百分比（0表示无折扣，5表示95折）
-  pointsRate    Int      @default(1) @map("points_rate") // 积分倍率（1表示消费1元得1积分）
-  icon          String?  // 等级图标
-  color         String?  // 等级颜色
-  benefits      String?  @db.Text // 等级权益描述（JSON格式）
-  sortOrder     Int      @default(0) @map("sort_order")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  
-  users         User[]
-  
-  @@unique([minPoints])
+  id         String   @id @default(cuid())
+  name       String
+  nameEn     String   @map("name_en")
+  minPoints  Int      @unique @map("min_points")
+  maxPoints  Int      @map("max_points")
+  discount   Int      @default(0)
+  pointsRate Int      @default(1) @map("points_rate")
+  icon       String?
+  color      String?
+  benefits   String?
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  users      User[]
+
   @@index([sortOrder])
   @@map("member_levels")
 }
 
-// 积分变动记录
 model PointLog {
-  id            String   @id @default(cuid())
-  userId        String   @map("user_id")
-  points        Int      // 积分变动（正数为获得，负数为消耗）
-  balance       Int      // 变动后余额
-  type          String   // 变动类型：earn_order(订单获得), earn_review(评价获得), consume(消费), admin(管理员调整), expire(过期)
-  relatedId     String?  @map("related_id") // 关联ID（订单ID等）
-  relatedType   String?  @map("related_type") // 关联类型（order, review等）
-  remark        String?  // 备注
-  createdAt     DateTime @default(now()) @map("created_at")
-  
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  points      Int
+  balance     Int
+  type        String
+  relatedId   String?  @map("related_id")
+  relatedType String?  @map("related_type")
+  remark      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
   @@map("point_logs")
 }
 
-// 用户收藏
 model Favorite {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  houseId     String   @map("house_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  house       Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  houseId   String   @map("house_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  house     Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, houseId])
   @@map("favorites")
 }
 
 model Homestay {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   location    String
   price       Int
-  rating      Float      @default(4.5)
-  reviews     Int        @default(0)
+  rating      Float        @default(4.5)
+  reviews     Int          @default(0)
   images      String[]
   type        String
   guests      Int
@@ -105,17 +97,17 @@ model Homestay {
   bathrooms   Int
   amenities   String[]
   description String?
-  isFavorite  Boolean    @default(false)
+  isFavorite  Boolean      @default(false)
   hostName    String
   hostAvatar  String
-  isSuperhost Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  orders      Order[]
-  stocks      HouseStock[]
+  isSuperhost Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   favorites   Favorite[]
+  stocks      HouseStock[]
+  orders      Order[]
   reviewList  Review[]
-  
+
   @@map("homestays")
 }
 
@@ -123,211 +115,193 @@ model HouseStock {
   id          String   @id @default(cuid())
   houseId     String   @map("house_id")
   date        DateTime @db.Date
-  totalStock  Int      @default(1) @map("total_stock")
-  bookedStock Int      @default(0) @map("booked_stock")
-  price       Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+  bookedStock Int      @default(0) @map("booked_stock")
+  price       Int?
+  totalStock  Int      @default(1) @map("total_stock")
   house       Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
-  
+
   @@unique([houseId, date])
   @@index([date])
   @@map("house_stocks")
 }
 
 model Order {
-  id          String   @id @default(cuid())
-  orderId     String   @unique @map("order_id")
-  userId      String   @map("user_id")
-  houseId     String   @map("house_id")
-  type        String   @default("homestay")
-  itemName    String   @map("item_name")
-  totalPrice  Int      @map("total_price")
-  status      String   @default("pending")
-  checkIn     DateTime? @map("check_in")
-  checkOut    DateTime? @map("check_out")
-  guests      Int?
-  createdAt   DateTime @default(now()) @map("create_time")
-  updatedAt   DateTime @updatedAt
-  
-  user        User     @relation(fields: [userId], references: [id])
-  house       Homestay @relation(fields: [houseId], references: [id])
-  review      Review?
-  
+  id         String    @id @default(cuid())
+  orderId    String    @unique @map("order_id")
+  userId     String    @map("user_id")
+  houseId    String    @map("house_id")
+  type       String    @default("homestay")
+  itemName   String    @map("item_name")
+  totalPrice Int       @map("total_price")
+  status     String    @default("pending")
+  checkIn    DateTime? @map("check_in")
+  checkOut   DateTime? @map("check_out")
+  guests     Int?
+  createdAt  DateTime  @default(now()) @map("create_time")
+  updatedAt  DateTime  @updatedAt
+  house      Homestay  @relation(fields: [houseId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+  review     Review?
+
   @@map("orders")
 }
 
-// 餐饮配置（后台可配置菜单）
 model MealConfig {
-  id          String   @id @default(cuid())
-  name        String   // 套餐名称，如"泰式早餐套餐"
-  description String?  // 套餐描述
-  image       String   // 套餐图片URL
-  price       Int      // 套餐价格（泰铢/人）
-  mealType    String   @map("meal_type") // BREAKFAST 或 DINNER
-  isActive    Boolean  @default(true) @map("is_active")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("create_time")
-  updatedAt   DateTime @updatedAt
-  
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  image       String
+  price       Int
+  mealType    String      @map("meal_type")
+  isActive    Boolean     @default(true) @map("is_active")
+  sortOrder   Int         @default(0) @map("sort_order")
+  createdAt   DateTime    @default(now()) @map("create_time")
+  updatedAt   DateTime    @updatedAt
   orders      MealOrder[]
-  
+
   @@map("meal_configs")
 }
 
 model MealOrder {
-  id            String   @id @default(cuid())
-  roomNumber    String   @map("room_number") // 房号，替代订单号
-  mealConfigId  String   @map("meal_config_id") // 选择的套餐ID
-  mealType      String   @map("meal_type") // BREAKFAST 或 DINNER
-  peopleCount   Int      @map("people_count")
-  totalPrice    Int      @map("total_price") // 总价
-  remark        String?
-  status        String   @default("CONFIRMED")
-  createdAt     DateTime @default(now()) @map("create_time")
-  updatedAt     DateTime @updatedAt
-  
-  mealConfig    MealConfig @relation(fields: [mealConfigId], references: [id])
-  
+  id           String     @id @default(cuid())
+  roomNumber   String     @map("room_number")
+  mealConfigId String     @map("meal_config_id")
+  mealType     String     @map("meal_type")
+  peopleCount  Int        @map("people_count")
+  totalPrice   Int        @map("total_price")
+  remark       String?
+  status       String     @default("CONFIRMED")
+  createdAt    DateTime   @default(now()) @map("create_time")
+  updatedAt    DateTime   @updatedAt
+  mealConfig   MealConfig @relation(fields: [mealConfigId], references: [id])
+
   @@map("meal_orders")
 }
 
-// 车辆配置（后台可配置）
 model CarConfig {
-  id             String   @id @default(cuid())
-  name           String   // 车辆名称，如"丰田凯美瑞"
-  description    String?  // 车辆描述
-  image          String   // 车辆图片URL
-  price          Int      // 租赁价格（泰铢/天）
-  carType        String   @map("car_type") // 车型：SUV、轿车、电动车等
-  seats          Int      // 座位数
-  hasDriver      Boolean  @default(true) @map("has_driver") // 可否配司机
-  driverFee      Int      @default(0) @map("driver_fee") // 司机每日费用
-  isActive       Boolean  @default(true) @map("is_active")
-  sortOrder      Int      @default(0) @map("sort_order")
-  createdAt      DateTime @default(now()) @map("create_time")
-  updatedAt      DateTime @updatedAt
-  
-  rentals        CarRental[]
-  stocks         CarStock[]
-  
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  image       String
+  price       Int
+  carType     String      @map("car_type")
+  seats       Int
+  isActive    Boolean     @default(true) @map("is_active")
+  sortOrder   Int         @default(0) @map("sort_order")
+  createdAt   DateTime    @default(now()) @map("create_time")
+  updatedAt   DateTime    @updatedAt
+  driverFee   Int         @default(0) @map("driver_fee")
+  hasDriver   Boolean     @default(true) @map("has_driver")
+  rentals     CarRental[]
+  stocks      CarStock[]
+
   @@map("car_configs")
 }
 
 model CarRental {
-  id            String   @id @default(cuid())
-  roomNumber    String   @map("room_number") // 房号
-  carConfigId   String   @map("car_config_id") // 选择的车辆ID
-  startTime     DateTime @map("start_time")
-  endTime       DateTime @map("end_time")
-  days          Int      // 租赁天数
-  totalPrice    Int      @map("total_price") // 总价
-  remark        String?
-  status        String   @default("PENDING")
-  needDriver    Boolean  @default(false) @map("need_driver") // 是否需要司机
-  driverId      String?  @map("driver_id") // 分配的司机ID
-  driverFee     Int?     @map("driver_fee") // 司机费用
-  createdAt     DateTime @default(now()) @map("create_time")
-  updatedAt     DateTime @updatedAt
-  
-  carConfig     CarConfig  @relation(fields: [carConfigId], references: [id])
-  driver        Driver?    @relation(fields: [driverId], references: [id])
-  
+  id          String    @id @default(cuid())
+  roomNumber  String    @map("room_number")
+  carConfigId String    @map("car_config_id")
+  startTime   DateTime  @map("start_time")
+  endTime     DateTime  @map("end_time")
+  days        Int
+  totalPrice  Int       @map("total_price")
+  remark      String?
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now()) @map("create_time")
+  updatedAt   DateTime  @updatedAt
+  driverFee   Int?      @map("driver_fee")
+  driverId    String?   @map("driver_id")
+  needDriver  Boolean   @default(false) @map("need_driver")
+  carConfig   CarConfig @relation(fields: [carConfigId], references: [id])
+  driver      Driver?   @relation(fields: [driverId], references: [id])
+
   @@map("car_rentals")
 }
 
-// 车辆库存（日期维度）
 model CarStock {
-  id            String   @id @default(cuid())
-  carConfigId   String   @map("car_config_id")
-  date          DateTime @db.Date
-  totalStock    Int      @default(1) @map("total_stock")
-  bookedStock   Int      @default(0) @map("booked_stock")
-  price         Int?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  carConfig     CarConfig @relation(fields: [carConfigId], references: [id], onDelete: Cascade)
-  
+  id          String    @id @default(cuid())
+  carConfigId String    @map("car_config_id")
+  date        DateTime  @db.Date
+  totalStock  Int       @default(1) @map("total_stock")
+  bookedStock Int       @default(0) @map("booked_stock")
+  price       Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  carConfig   CarConfig @relation(fields: [carConfigId], references: [id], onDelete: Cascade)
+
   @@unique([carConfigId, date])
   @@index([date])
   @@map("car_stocks")
 }
 
-// 司机信息
 model Driver {
-  id            String   @id @default(cuid())
-  name          String   // 司机姓名
-  phone         String   // 联系电话
-  avatar        String?  // 头像
-  licenseNumber String?  @map("license_number") // 驾照号
-  status        String   @default("active") // active, inactive, on_leave
-  dailyFee      Int      @default(0) @map("daily_fee") // 每日费用
-  remark        String?  // 备注
-  createdAt     DateTime @default(now()) @map("create_time")
-  updatedAt     DateTime @updatedAt
-  
-  schedules     DriverSchedule[]
+  id            String           @id @default(cuid())
+  name          String
+  phone         String
+  avatar        String?
+  licenseNumber String?          @map("license_number")
+  status        String           @default("active")
+  dailyFee      Int              @default(0) @map("daily_fee")
+  remark        String?
+  createdAt     DateTime         @default(now()) @map("create_time")
+  updatedAt     DateTime         @updatedAt
   rentals       CarRental[]
-  
+  schedules     DriverSchedule[]
+
   @@map("drivers")
 }
 
-// 司机排班（日期维度）
 model DriverSchedule {
-  id            String   @id @default(cuid())
-  driverId      String   @map("driver_id")
-  date          DateTime @db.Date
-  status        String   @default("available") // available, booked, off
-  remark        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-   
-  driver        Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
-   
+  id        String   @id @default(cuid())
+  driverId  String   @map("driver_id")
+  date      DateTime @db.Date
+  status    String   @default("available")
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  driver    Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
   @@unique([driverId, date])
   @@index([date, status])
   @@map("driver_schedules")
 }
 
-// 员工信息（司机之外的员工：清洁工、前台、管理员等）
 model Staff {
-  id            String   @id @default(cuid())
-  name          String   // 员工姓名
-  phone         String   // 联系电话
-  avatar        String?  // 头像
-  staffType     String   @map("staff_type") // cleaner, receptionist, admin, maintenance, other
-  status        String   @default("active") // active, inactive, on_leave
-  dailyWage     Int      @default(0) @map("daily_wage") // 日薪
-  idNumber      String?  @map("id_number") // 身份证号
-  emergencyContact String? @map("emergency_contact") // 紧急联系人
-  emergencyPhone String? @map("emergency_phone") // 紧急联系电话
-  hireDate      DateTime? @map("hire_date") // 入职日期
-  remark        String?  // 备注
-  createdAt     DateTime @default(now()) @map("create_time")
-  updatedAt     DateTime @updatedAt
-   
-  schedules     StaffSchedule[]
-   
+  id               String          @id @default(cuid())
+  name             String
+  phone            String
+  avatar           String?
+  staffType        String          @map("staff_type")
+  status           String          @default("active")
+  dailyWage        Int             @default(0) @map("daily_wage")
+  idNumber         String?         @map("id_number")
+  emergencyContact String?         @map("emergency_contact")
+  emergencyPhone   String?         @map("emergency_phone")
+  hireDate         DateTime?       @map("hire_date")
+  remark           String?
+  createdAt        DateTime        @default(now()) @map("create_time")
+  updatedAt        DateTime        @updatedAt
+  schedules        StaffSchedule[]
+
   @@index([staffType])
   @@index([status])
   @@map("staffs")
 }
 
-// 员工排班（日期维度）
 model StaffSchedule {
-  id            String   @id @default(cuid())
-  staffId       String   @map("staff_id")
-  date          DateTime @db.Date
-  status        String   @default("scheduled") // scheduled, working, completed, absent, off
-  workHours     Int?     @map("work_hours") // 工作时长（小时）
-  remark        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-   
-  staff         Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-   
+  id        String   @id @default(cuid())
+  staffId   String   @map("staff_id")
+  date      DateTime @db.Date
+  status    String   @default("scheduled")
+  workHours Int?     @map("work_hours")
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
   @@unique([staffId, date])
   @@index([date, status])
   @@map("staff_schedules")
@@ -343,7 +317,7 @@ model Category {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("categories")
 }
 
@@ -354,7 +328,7 @@ model Transaction {
   description String
   createdAt   DateTime @default(now()) @map("create_time")
   updatedAt   DateTime @updatedAt
-  
+
   @@map("transactions")
 }
 
@@ -365,46 +339,42 @@ model Admin {
   name      String?
   createdAt DateTime @default(now()) @map("create_time")
   updatedAt DateTime @updatedAt
-  
+
   @@map("admins")
 }
 
-// 票务配置（后台可配置）
 model TicketConfig {
-  id          String   @id @default(cuid())
-  name        String   // 票务名称，如"大皇宫门票"
-  description String?  // 票务描述
-  image       String   // 票务图片URL
-  price       Int      // 票务价格（泰铢/张）
-  ticketType  String   @map("ticket_type") // 类型：景点、表演、游艇等
-  isActive    Boolean  @default(true) @map("is_active")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("create_time")
-  updatedAt   DateTime @updatedAt
-  
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  image       String
+  price       Int
+  ticketType  String        @map("ticket_type")
+  isActive    Boolean       @default(true) @map("is_active")
+  sortOrder   Int           @default(0) @map("sort_order")
+  createdAt   DateTime      @default(now()) @map("create_time")
+  updatedAt   DateTime      @updatedAt
   orders      TicketOrder[]
-  
+
   @@map("ticket_configs")
 }
 
 model TicketOrder {
-  id            String   @id @default(cuid())
-  roomNumber    String   @map("room_number") // 房号
-  ticketConfigId String  @map("ticket_config_id") // 选择的票务ID
-  quantity      Int      // 预订数量
-  totalPrice    Int      @map("total_price") // 总价
-  visitDate     DateTime? @map("visit_date") // 参观日期（可选）
-  remark        String?
-  status        String   @default("CONFIRMED")
-  createdAt     DateTime @default(now()) @map("create_time")
-  updatedAt     DateTime @updatedAt
-  
-  ticketConfig  TicketConfig @relation(fields: [ticketConfigId], references: [id])
-  
+  id             String       @id @default(cuid())
+  roomNumber     String       @map("room_number")
+  ticketConfigId String       @map("ticket_config_id")
+  quantity       Int
+  totalPrice     Int          @map("total_price")
+  visitDate      DateTime?    @map("visit_date")
+  remark         String?
+  status         String       @default("CONFIRMED")
+  createdAt      DateTime     @default(now()) @map("create_time")
+  updatedAt      DateTime     @updatedAt
+  ticketConfig   TicketConfig @relation(fields: [ticketConfigId], references: [id])
+
   @@map("ticket_orders")
 }
 
-// 业务配置（后台可配置各业务线的确认模式）
 model BusinessConfig {
   id          String   @id @default(cuid())
   key         String   @unique
@@ -412,213 +382,197 @@ model BusinessConfig {
   description String?
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdAt   DateTime @default(now()) @map("created_at")
-  
+
   @@map("business_configs")
 }
 
-// 用户评价
 model Review {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  houseId     String   @map("house_id")
-  orderId     String   @unique @map("order_id") // 一个订单只能评价一次
-  rating      Int      // 1-5 星级评分
-  content     String?  @db.Text // 评价内容，最多200字
-  images      String[] // 评价图片，最多3张
-  reply       String?  @db.Text // 管理员回复
-  replyAt     DateTime? @map("reply_at") // 回复时间
-  status      String   @default("active") // active, hidden
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  house       Homestay @relation(fields: [houseId], references: [id], onDelete: Cascade)
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  houseId   String    @map("house_id")
+  orderId   String    @unique @map("order_id")
+  rating    Int
+  content   String?
+  images    String[]
+  reply     String?
+  replyAt   DateTime? @map("reply_at")
+  status    String    @default("active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  house     Homestay  @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([houseId])
   @@index([userId])
   @@map("reviews")
 }
 
-// 用户通知
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  type        String   // notification type: order_confirmed, order_cancelled, review_reminder, system
-  title       String   // 通知标题
-  content     String   @db.Text // 通知内容
-  data        String?  @db.Text // JSON格式的附加数据（如订单ID等）
-  isRead      Boolean  @default(false) @map("is_read")
-  createdAt   DateTime @default(now()) @map("created_at")
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  content   String
+  data      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
 }
 
-// 成本记录
 model Cost {
   id          String   @id @default(cuid())
-  costType    String   @map("cost_type") // rent, utilities, salary, maintenance, procurement, other
-  amount      Int      // 金额（泰铢）
-  date        DateTime @db.Date // 成本发生日期
-  description String?  // 描述
-  relatedId   String?  @map("related_id") // 关联项目ID（如员工ID、民宿ID等）
-  relatedType String?  @map("related_type") // 关联项目类型（staff, homestay, car, meal, ticket）
-  status      String   @default("confirmed") // pending, confirmed, cancelled
-  remark      String?  // 备注
+  costType    String   @map("cost_type")
+  amount      Int
+  date        DateTime @db.Date
+  description String?
+  relatedId   String?  @map("related_id")
+  relatedType String?  @map("related_type")
+  status      String   @default("confirmed")
+  remark      String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  
+
   @@index([costType])
   @@index([date])
   @@index([status])
   @@map("costs")
 }
 
-// 服务使用限额配置
 model UsageLimit {
-  id            String   @id @default(cuid())
-  service       String   // supabase, netlify, render
-  resourceType  String   @map("resource_type") // database, bandwidth, storage, hours
-  limitValue    Int      @map("limit_value") // 限额值（MB/GB/小时等）
-  unit          String   // MB, GB, hours
-  warningThreshold Int   @default(80) @map("warning_threshold") // 预警阈值百分比
-  criticalThreshold Int  @default(95) @map("critical_threshold") // 严重阈值百分比
-  description   String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  
+  id                String   @id @default(cuid())
+  service           String
+  resourceType      String   @map("resource_type")
+  limitValue        Int      @map("limit_value")
+  unit              String
+  warningThreshold  Int      @default(80) @map("warning_threshold")
+  criticalThreshold Int      @default(95) @map("critical_threshold")
+  description       String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
   @@unique([service, resourceType])
   @@index([service])
   @@map("usage_limits")
 }
 
-// 服务使用量日志
 model UsageLog {
-  id            String   @id @default(cuid())
-  service       String   // supabase, netlify, render
-  resourceType  String   @map("resource_type") // database, bandwidth, storage, hours
-  usedValue     Int      @map("used_value") // 已使用值（MB/GB/小时等）
-  unit          String   // MB, GB, hours
-  percentage    Float    // 使用百分比
-  status        String   @default("normal") // normal, warning, critical
-  recordedAt    DateTime @default(now()) @map("recorded_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-   
+  id           String   @id @default(cuid())
+  service      String
+  resourceType String   @map("resource_type")
+  usedValue    Int      @map("used_value")
+  unit         String
+  percentage   Float
+  status       String   @default("normal")
+  recordedAt   DateTime @default(now()) @map("recorded_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
   @@index([service, resourceType])
   @@index([recordedAt])
   @@map("usage_logs")
 }
 
-// 优惠券
 model Coupon {
-  id              String   @id @default(cuid())
-  code            String   @unique // 优惠券代码
-  name            String   // 优惠券名称
-  description     String?  // 描述
-  type            String   // discount: 折扣券, cash: 现金券, percent: 百分比折扣
-  value           Int      // 折扣值（现金券为泰铢，百分比折扣为1-100）
-  minAmount       Int      @default(0) @map("min_amount") // 最低消费金额
-  maxDiscount     Int?     @map("max_discount") // 最大折扣金额（百分比折扣用）
-  totalCount      Int      @default(0) @map("total_count") // 总发行量
-  usedCount       Int      @default(0) @map("used_count") // 已使用数量
-  perUserLimit    Int      @default(1) @map("per_user_limit") // 每人限用次数
-  startTime       DateTime @map("start_time") // 生效开始时间
-  endTime         DateTime @map("end_time") // 生效结束时间
-  applicableType  String   @default("all") @map("applicable_type") // 适用类型: all, homestay, car, meal, ticket
-  applicableIds   String?  @map("applicable_ids") // 适用项目ID列表（逗号分隔）
-  status          String   @default("active") // active, inactive, expired
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
-  userCoupons     UserCoupon[]
-  
+  id             String       @id @default(cuid())
+  code           String       @unique
+  name           String
+  description    String?
+  type           String
+  value          Int
+  minAmount      Int          @default(0) @map("min_amount")
+  maxDiscount    Int?         @map("max_discount")
+  totalCount     Int          @default(0) @map("total_count")
+  usedCount      Int          @default(0) @map("used_count")
+  perUserLimit   Int          @default(1) @map("per_user_limit")
+  startTime      DateTime     @map("start_time")
+  endTime        DateTime     @map("end_time")
+  applicableType String       @default("all") @map("applicable_type")
+  applicableIds  String?      @map("applicable_ids")
+  status         String       @default("active")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  userCoupons    UserCoupon[]
+
   @@index([code])
   @@index([status])
   @@index([startTime, endTime])
   @@map("coupons")
 }
 
-// 用户优惠券关联
 model UserCoupon {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  couponId    String   @map("coupon_id")
-  orderId     String?  @map("order_id") // 使用的订单ID
-  status      String   @default("available") // available, used, expired
-  usedAt      DateTime? @map("used_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  
-  coupon      Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  couponId  String    @map("coupon_id")
+  orderId   String?   @map("order_id")
+  status    String    @default("available")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  coupon    Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
   @@unique([userId, couponId])
   @@index([userId])
   @@index([couponId])
   @@map("user_coupons")
 }
 
-// 促销活动
 model Promotion {
-  id              String   @id @default(cuid())
-  name            String   // 活动名称
-  description     String?  // 活动描述
-  type            String   // discount: 折扣活动, special: 特价活动, bundle: 套餐活动
-  discountValue   Int      @default(0) @map("discount_value") // 折扣值
-  discountType    String   @default("percent") @map("discount_type") // percent, cash
-  applicableType  String   @default("all") @map("applicable_type") // 适用类型: all, homestay, car, meal, ticket
-  applicableIds   String?  @map("applicable_ids") // 适用项目ID列表
-  startTime       DateTime @map("start_time")
-  endTime         DateTime @map("end_time")
-  image           String?  // 活动图片
-  bannerText      String?  @map("banner_text") // 横幅文案
-  status          String   @default("active") // active, inactive, expired
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  type           String
+  discountValue  Int      @default(0) @map("discount_value")
+  discountType   String   @default("percent") @map("discount_type")
+  applicableType String   @default("all") @map("applicable_type")
+  applicableIds  String?  @map("applicable_ids")
+  startTime      DateTime @map("start_time")
+  endTime        DateTime @map("end_time")
+  image          String?
+  bannerText     String?  @map("banner_text")
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
   @@index([status])
   @@index([applicableType])
   @@index([startTime, endTime])
   @@map("promotions")
 }
 
-// 商家信息 (F023 - 商家入驻)
 model Merchant {
-  id          String   @id @default(cuid())
-  userId      String   @unique @map("user_id") // 关联用户账号
-  name        String   // 商家名称
-  phone       String   // 联系电话
-  email       String?  // 联系邮箱
-  avatar      String?  // 商家头像
-  description String?  @db.Text // 商家介绍
-  status      String   @default("pending") // pending, approved, rejected, suspended
-  commission  Int      @default(10) // 佣金比例（百分比）
-  bankName    String?  @map("bank_name") // 银行名称
-  bankAccount String?  @map("bank_account") // 银行账号
-  remark      String?  // 备注
-  rejectReason String? @map("reject_reason") // 拒绝原因
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  products    MerchantProduct[]
-  
+  id           String            @id @default(cuid())
+  userId       String            @unique @map("user_id")
+  name         String
+  phone        String
+  email        String?
+  avatar       String?
+  description  String?
+  status       String            @default("pending")
+  commission   Int               @default(10)
+  bankName     String?           @map("bank_name")
+  bankAccount  String?           @map("bank_account")
+  remark       String?
+  rejectReason String?           @map("reject_reason")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+  products     MerchantProduct[]
+
   @@index([status])
   @@map("merchants")
 }
 
-// 商家产品（民宿、租车等）(F023)
 model MerchantProduct {
   id          String   @id @default(cuid())
   merchantId  String   @map("merchant_id")
-  productType String   @map("product_type") // homestay, car, meal, ticket
-  productId   String   @map("product_id") // 关联的产品ID
-  status      String   @default("active") // active, inactive
+  productType String   @map("product_type")
+  productId   String   @map("product_id")
+  status      String   @default("active")
   createdAt   DateTime @default(now()) @map("created_at")
-  
   merchant    Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  
+
   @@unique([merchantId, productType, productId])
   @@map("merchant_products")
 }
