@@ -4,7 +4,7 @@
   "description": "TML Villa backend API",
 "main": "api/app.js",
   "scripts": {
-    "start": "npx prisma migrate deploy && node api/app.js",
+    "start": "npx prisma migrate deploy && node api/db.js",
     "dev": "nodemon api/db.js",
     "db:generate": "npx prisma generate",
     "db:deploy": "npx prisma migrate deploy",
