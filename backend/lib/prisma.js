@@ -6,20 +6,21 @@ const { PrismaClient } = require('@prisma/client');
 
 let prisma;
 if (!global.prisma) {
+  // Build connection URL with pgbouncer=true for Supabase compatibility
+  // https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting
+  const baseUrl = process.env.DATABASE_URL || '';
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const connectionUrl = baseUrl.includes('pgbouncer=true')
+    ? baseUrl
+    : `${baseUrl}${separator}pgbouncer=true&connection_limit=1`;
+
   global.prisma = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
     // Supabase 免费版最多 60 连接，Render 512MB RAM 限制
-    // 保持连接池小巧避免 OOM 和连接耗尽
+    // connection_limit=1 for serverless environments to prevent connection exhaustion
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-    // Disable prepared statements for Supabase connection pool compatibility
-    // https://www.prisma.io/docs/orm/more/problems-and-issues/supabase-connection-pool
-    __internal: {
-      engine: {
-        preparedStatements: false,
+        url: connectionUrl,
       },
     },
   });
