@@ -2,9 +2,9 @@
   "name": "tml-villa-backend",
   "version": "1.0.0",
   "description": "TML Villa backend API",
-  "main": "api/db.js",
+"main": "api/app.js",
   "scripts": {
-    "start": "node api/db.js",
+    "start": "node api/app.js",
     "dev": "nodemon api/db.js",
     "db:generate": "npx prisma generate",
     "db:deploy": "npx prisma migrate deploy",

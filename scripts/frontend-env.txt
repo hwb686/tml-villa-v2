@@ -1,0 +1,7 @@
+# 前端服务环境变量 (tml-villa)
+# 请复制到 Render Dashboard → tml-villa → Environment
+
+NODE_ENV=production
+VITE_API_BASE_URL=https://tml-villa-api.onrender.com/api
+VITE_SUPABASE_URL=https://tlorpxejqqmrdcfgvyhl.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY_HERE

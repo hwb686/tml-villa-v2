@@ -1,0 +1,15 @@
+# 后端服务环境变量 (tml-villa-api)
+# 请复制到 Render Dashboard → tml-villa-api → Environment
+
+NODE_ENV=production
+PORT=10000
+JWT_SECRET=rK9mP2nQ5vX8bC4dF7gH1jK3lN6pR9sU2wY5zA8dE1gH4jK7mN0q
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+DATABASE_URL=postgresql://postgres.tlorpxejqqmrdcfgvyhl:Kaokao686!!@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=5
+DIRECT_DATABASE_URL=postgresql://postgres.tlorpxejqqmrdcfgvyhl:Kaokao686!!@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres
+SUPABASE_URL=https://tlorpxejqqmrdcfgvyhl.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY_HERE
+ALLOWED_ORIGINS=https://tml-villa.onrender.com
+FRONTEND_URL=https://tml-villa.onrender.com
+CACHE_TTL_SECONDS=30
