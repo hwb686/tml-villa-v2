@@ -59,6 +59,15 @@ async function fetchAdminApi<T>(endpoint: string, options: RequestInit = {}): Pr
   });
 }
 
+export const adminApi = {
+  login: async (username: string, password: string): Promise<ApiResponse<{ token: string; admin: { id: string; username: string; name: string } }>> => {
+    return fetchApi('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  },
+};
+
 // Homestay API
 export interface HomestaySearchParams {
   category?: string;
