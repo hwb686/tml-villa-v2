@@ -7,7 +7,7 @@ services:
   - type: web
     name: tml-villa
     runtime: static
-    buildCommand: cd app && npm install && npm run build
+    buildCommand: npm install --prefix app && npm run build --prefix app
     staticPublishPath: app/dist
     pullRequestPreviewsEnabled: true
     envVars:
