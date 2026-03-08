@@ -7,8 +7,9 @@ services:
   - type: web
     name: tml-villa
     runtime: static
-    buildCommand: cd app && npm ci && npm run build
-    staticPublishPath: app/dist
+    rootDir: app
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     pullRequestPreviewsEnabled: true
     envVars:
       - key: NODE_ENV
