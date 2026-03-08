@@ -1,21 +1,99 @@
-{
-  "name": "tml-villa-frontend",
-  "version": "1.0.0",
-  "description": "TML Villa - 泰国民宿预订平台前端",
-  "main": "index.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit"
-  },
-  "keywords": ["TML", "TML Villa", "泰国民宿", "民宿预订", "React", "TypeScript"],
-  "author": "TML Villa",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/tml-villa.git"
-  },
-  "homepage": "https://tml-villa.onrender.com"
-}
+# TML Villa - Render Blueprint 配置
+# 使用此文件通过 Render Blueprint 一键部署前后端
+# 文档: https://render.com/docs/blueprint-spec
+
+services:
+  # 前端静态站点
+  - type: web
+    name: tml-villa
+    runtime: static
+    buildCommand: cd app && npm install && npm run build
+    staticPublishPath: app/dist
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_BASE_URL
+        value: https://tml-villa-api.onrender.com/api
+      # Supabase 配置（需要在 Render Dashboard 中设置）
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+  # 后端 API 服务
+  - type: web
+    name: tml-villa-api
+    runtime: node
+    region: singapore
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      # 数据库配置（从 Supabase 获取）
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # CORS 配置
+      - key: ALLOWED_ORIGINS
+        value: https://tml-villa.onrender.com
+      - key: FRONTEND_URL
+        value: https://tml-villa.onrender.com
+      # 缓存配置
+      - key: CACHE_TTL_SECONDS
+        value: "30"
+      # 邮件服务配置（可选）
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+# 注意：数据库使用 Supabase 托管，不在 Render 上创建
+# Supabase Dashboard: https://supabase.com/dashboard
+# 
+# 部署前需要在 Render Dashboard 中设置以下环境变量：
+# - DATABASE_URL: Supabase PostgreSQL 连接字符串 (Transaction Pooler)
+# - DIRECT_DATABASE_URL: Supabase PostgreSQL 连接字符串 (Session Pooler)
+# - SUPABASE_URL: Supabase 项目 URL
+# - SUPABASE_SERVICE_ROLE_KEY: Supabase Service Role Key
+# - VITE_SUPABASE_URL: Supabase 项目 URL (前端)
+# - VITE_SUPABASE_ANON_KEY: Supabase Anon Key (前端)
