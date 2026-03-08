@@ -20,7 +20,11 @@ interface UserInfo {
   avatar?: string;
 }
 
-export default function Navbar() {
+interface NavbarProps {
+  onSearchClick?: () => void;
+}
+
+export default function Navbar({ onSearchClick }: NavbarProps) {
   const { t, lang, setLang } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
