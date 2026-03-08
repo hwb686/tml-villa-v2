@@ -8,8 +8,11 @@ const cache = require('./cache');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-// JWT 密钥：生产环境必须在 Render 环境变量中设置 JWT_SECRET
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me-in-production';
+// JWT 密钥：必须在环境变量中设置 JWT_SECRET
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required. Please set it in your environment variables.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '24h';
 
 /** 生成 JWT Token */
